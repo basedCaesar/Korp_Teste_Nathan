@@ -16,7 +16,7 @@ type Handler struct {
 }
 
 // RegisterRoutes monta o CRUD de produtos em /produtos.
-func RegisterRoutes(r *gin.Engine, svc *Service) {
+func RegisterRoutes(r *gin.Engine, svc *Service, idemStore *httpx.IdempotencyStore) {
 	h := &Handler{svc: svc}
 	g := r.Group("/produtos")
 	g.POST("", h.criar)
@@ -25,7 +25,7 @@ func RegisterRoutes(r *gin.Engine, svc *Service) {
 	g.PUT("/:id", h.atualizar)
 	g.DELETE("/:id", h.excluir)
 
-	r.POST("/estoque/baixas", h.baixar)
+	r.POST("/estoque/baixas", httpx.Idempotency(idemStore), h.baixar)
 }
 
 func (h *Handler) criar(c *gin.Context) {

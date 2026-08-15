@@ -39,7 +39,8 @@ func main() {
 	}
 	defer pool.Close()
 
-	if err := db.RunMigrations(ctx, pool, faturamento.Migrations); err != nil {
+	migrations := append([]string{httpx.MigrationCreateIdempotencyKeys}, faturamento.Migrations...)
+	if err := db.RunMigrations(ctx, pool, migrations); err != nil {
 		slog.Error("falha ao rodar migrations", "error", err)
 		os.Exit(1)
 	}
@@ -47,6 +48,7 @@ func main() {
 	repo := faturamento.NewRepository(pool)
 	estoqueClient := faturamento.NewEstoqueClient(estoqueURL)
 	svc := faturamento.NewService(repo, estoqueClient)
+	idemStore := httpx.NewIdempotencyStore(pool)
 
 	go faturamento.RunReaper(ctx, repo)
 
@@ -54,7 +56,7 @@ func main() {
 	r.Use(httpx.Recovery())
 	r.Use(httpx.RequestIDMiddleware())
 	httpx.RegisterHealth(r, "faturamento")
-	faturamento.RegisterRoutes(r, svc)
+	faturamento.RegisterRoutes(r, svc, idemStore)
 
 	slog.Info("iniciando servico", "port", port)
 	if err := r.Run(":" + port); err != nil {

@@ -34,19 +34,21 @@ func main() {
 	}
 	defer pool.Close()
 
-	if err := db.RunMigrations(ctx, pool, estoque.Migrations); err != nil {
+	migrations := append([]string{httpx.MigrationCreateIdempotencyKeys}, estoque.Migrations...)
+	if err := db.RunMigrations(ctx, pool, migrations); err != nil {
 		slog.Error("falha ao rodar migrations", "error", err)
 		os.Exit(1)
 	}
 
 	repo := estoque.NewRepository(pool)
 	svc := estoque.NewService(repo)
+	idemStore := httpx.NewIdempotencyStore(pool)
 
 	r := gin.New()
 	r.Use(httpx.Recovery())
 	r.Use(httpx.RequestIDMiddleware())
 	httpx.RegisterHealth(r, "estoque")
-	estoque.RegisterRoutes(r, svc)
+	estoque.RegisterRoutes(r, svc, idemStore)
 
 	slog.Info("iniciando servico", "port", port)
 	if err := r.Run(":" + port); err != nil {

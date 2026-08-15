@@ -83,6 +83,7 @@ func (c *EstoqueClient) enviarBaixa(ctx context.Context, requestID string, itens
 	req.Header.Set("Content-Type", "application/json")
 	if requestID != "" {
 		req.Header.Set(httpx.HeaderRequestID, requestID)
+		req.Header.Set(httpx.HeaderIdempotencyKey, requestID)
 	}
 
 	resp, err := c.httpClient.Do(req)

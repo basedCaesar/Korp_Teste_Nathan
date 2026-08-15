@@ -15,7 +15,7 @@ type Handler struct {
 	svc *Service
 }
 
-func RegisterRoutes(r *gin.Engine, svc *Service) {
+func RegisterRoutes(r *gin.Engine, svc *Service, idemStore *httpx.IdempotencyStore) {
 	h := &Handler{svc: svc}
 	g := r.Group("/notas")
 	g.POST("", h.criar)
@@ -25,7 +25,7 @@ func RegisterRoutes(r *gin.Engine, svc *Service) {
 	g.POST("/:id/itens", h.adicionarItem)
 	g.PUT("/:id/itens/:itemId", h.atualizarItem)
 	g.DELETE("/:id/itens/:itemId", h.removerItem)
-	g.POST("/:id/imprimir", h.imprimir)
+	g.POST("/:id/imprimir", httpx.Idempotency(idemStore), h.imprimir)
 }
 
 func (h *Handler) criar(c *gin.Context) {
@@ -130,10 +130,6 @@ func (h *Handler) removerItem(c *gin.Context) {
 func (h *Handler) imprimir(c *gin.Context) {
 	notaID, ok := parseIDParam(c, "id")
 	if !ok {
-		return
-	}
-	if c.GetHeader("Idempotency-Key") == "" {
-		httpx.RespondError(c, http.StatusBadRequest, "IDEMPOTENCY_KEY_OBRIGATORIA", "header Idempotency-Key e obrigatorio")
 		return
 	}
 	if err := h.svc.Imprimir(c.Request.Context(), httpx.RequestID(c), notaID); err != nil {
