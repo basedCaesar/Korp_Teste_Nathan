@@ -74,7 +74,9 @@ Teste unitário na regra de baixa de estoque (saldo insuficiente, conflito de ve
 **Faturamento** (`:8083`)
 - `POST/GET /notas`, `GET/DELETE /notas/:id`
 - `POST/PUT/DELETE /notas/:id/itens[/:itemId]`
-- `POST /notas/:id/imprimir` — header `Idempotency-Key` obrigatório
+- `POST /notas/:id/imprimir` — header `Idempotency-Key` obrigatório. Sucesso devolve `200` com
+  corpo vazio (não a nota); pra ver o status `FECHADA` e o resultado, faz `GET /notas/:id` em
+  seguida.
 
 **Auth** (`:8081`)
 - `POST /auth/cadastro`, `GET /auth/verificar?token=...`, `POST /auth/login`
@@ -98,6 +100,14 @@ Todo erro segue o mesmo formato em qualquer serviço:
 
 Sem a chave configurada, o resto do sistema funciona normal — só esse endpoint específico
 devolve `503 IA_INDISPONIVEL` em vez de derrubar o serviço.
+
+**Troubleshooting:** se o endpoint devolver `503 IA_INDISPONIVEL` mesmo com a chave certa,
+pode ser duas coisas: (1) o modelo `gemini-flash-latest` do free tier às vezes devolve `503
+UNAVAILABLE` com "This model is currently experiencing high demand" — é do lado do Google,
+tenta de novo em alguns segundos; (2) em Docker Desktop/WSL2 o container pode tentar IPv6 pra
+`generativelanguage.googleapis.com` e não receber resposta — por isso `ia.go` força IPv4 no
+`http.Client` (`DialContext` com rede `tcp4`). Se mesmo assim travar por ~15s toda vez, o
+problema é rede do host.
 
 ## Resiliência
 

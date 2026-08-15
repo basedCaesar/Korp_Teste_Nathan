@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -23,10 +24,16 @@ func NewIAClient() *IAClient {
 	if model == "" {
 		model = "gemini-flash-latest"
 	}
+	dialer := &net.Dialer{Timeout: 10 * time.Second}
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dialer.DialContext(ctx, "tcp4", addr)
+		},
+	}
 	return &IAClient{
 		apiKey:     os.Getenv("GEMINI_API_KEY"),
 		model:      model,
-		httpClient: &http.Client{Timeout: 15 * time.Second},
+		httpClient: &http.Client{Timeout: 15 * time.Second, Transport: transport},
 	}
 }
 
