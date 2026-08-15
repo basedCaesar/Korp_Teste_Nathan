@@ -40,8 +40,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	if os.Getenv("GEMINI_API_KEY") == "" {
+		slog.Warn("GEMINI_API_KEY nao configurada, POST /produtos/sugestao vai responder 503")
+	}
+
 	repo := estoque.NewRepository(pool)
-	svc := estoque.NewService(repo)
+	iaClient := estoque.NewIAClient()
+	svc := estoque.NewService(repo, iaClient)
 	idemStore := httpx.NewIdempotencyStore(pool)
 
 	r := gin.New()

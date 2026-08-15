@@ -10,4 +10,6 @@ var (
 	// usados a partir do bloco 3 (baixa de estoque na impressao da nota)
 	ErrSaldoInsuficiente = errors.New("saldo insuficiente")
 	ErrConflitoVersao    = errors.New("conflito de versao no produto")
+
+	ErrIAIndisponivel = errors.New("servico de IA indisponivel")
 )

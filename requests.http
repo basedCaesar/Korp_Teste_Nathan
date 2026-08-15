@@ -67,6 +67,27 @@ Content-Type: application/json
 DELETE {{estoque}}/produtos/1
 
 
+### ==================== ESTOQUE: SUGESTAO VIA IA (esticao opcional) ====================
+### Depende de GEMINI_API_KEY configurada no .env (nao commitado). Sem a chave, devolve 503
+### IA_INDISPONIVEL de forma graciosa em vez de derrubar o servico.
+
+### sugerir descricao + produtos similares pra um codigo novo
+POST {{estoque}}/produtos/sugestao
+Content-Type: application/json
+
+{
+  "codigo": "TEC-045"
+}
+
+### sugestao sem informar codigo (espera 400 VALIDACAO)
+POST {{estoque}}/produtos/sugestao
+Content-Type: application/json
+
+{
+  "codigo": ""
+}
+
+
 ### ==================== FATURAMENTO: NOTAS ====================
 
 ### criar nota (numero sequencial, status ABERTA)

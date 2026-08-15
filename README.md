@@ -69,6 +69,7 @@ Teste unitário na regra de baixa de estoque (saldo insuficiente, conflito de ve
 **Estoque** (`:8082`)
 - `POST/GET /produtos`, `GET/PUT/DELETE /produtos/:id`
 - `POST /estoque/baixas` — uso interno, chamado pelo faturamento na impressão
+- `POST /produtos/sugestao` — opcional, sugere descrição + produtos similares via IA (ver abaixo)
 
 **Faturamento** (`:8083`)
 - `POST/GET /notas`, `GET/DELETE /notas/:id`
@@ -84,6 +85,19 @@ Todo erro segue o mesmo formato em qualquer serviço:
 ```json
 { "code": "SALDO_INSUFICIENTE", "message": "...", "details": [], "trace_id": "..." }
 ```
+
+## Feature opcional: sugestão de produto via IA
+
+`POST /produtos/sugestao` (estoque) sugere descrição + produtos similares a partir só do
+`codigo`, usando a API do Google Gemini. Precisa de uma chave gratuita:
+
+1. Cria conta em [aistudio.google.com](https://aistudio.google.com) (sem cartão)
+2. Gera uma chave em "Get API key"
+3. Copia `.env.example` pra `.env` na raiz do projeto e cola a chave em `GEMINI_API_KEY`
+4. `docker compose up --build`
+
+Sem a chave configurada, o resto do sistema funciona normal — só esse endpoint específico
+devolve `503 IA_INDISPONIVEL` em vez de derrubar o serviço.
 
 ## Resiliência
 

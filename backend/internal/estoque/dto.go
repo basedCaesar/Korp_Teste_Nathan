@@ -21,3 +21,13 @@ type ItemBaixaRequest struct {
 	ProdutoID  int64 `json:"produto_id" binding:"required"`
 	Quantidade int   `json:"quantidade" binding:"required,gt=0"`
 }
+
+type SugestaoRequest struct {
+	Codigo string `json:"codigo" binding:"required"`
+}
+
+type SugestaoResponse struct {
+	Codigo             string    `json:"codigo"`
+	DescricaoSugerida  string    `json:"descricao_sugerida"`
+	ProdutosSimilares  []Produto `json:"produtos_similares"`
+}

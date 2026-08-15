@@ -24,6 +24,7 @@ func RegisterRoutes(r *gin.Engine, svc *Service, idemStore *httpx.IdempotencySto
 	g.GET("/:id", h.buscar)
 	g.PUT("/:id", h.atualizar)
 	g.DELETE("/:id", h.excluir)
+	g.POST("/sugestao", h.sugerir)
 
 	r.POST("/estoque/baixas", httpx.Idempotency(idemStore), h.baixar)
 }
@@ -111,6 +112,20 @@ func (h *Handler) baixar(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+func (h *Handler) sugerir(c *gin.Context) {
+	var req SugestaoRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.RespondValidationError(c, err)
+		return
+	}
+	resp, err := h.svc.Sugerir(c.Request.Context(), req.Codigo)
+	if err != nil {
+		h.responderErro(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 func parseID(c *gin.Context) (int64, bool) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -131,6 +146,8 @@ func (h *Handler) responderErro(c *gin.Context, err error) {
 		httpx.RespondError(c, http.StatusConflict, "SALDO_INSUFICIENTE", err.Error())
 	case errors.Is(err, ErrConflitoVersao):
 		httpx.RespondError(c, http.StatusConflict, "CONFLITO_VERSAO", err.Error())
+	case errors.Is(err, ErrIAIndisponivel):
+		httpx.RespondError(c, http.StatusServiceUnavailable, "IA_INDISPONIVEL", err.Error())
 	default:
 		slog.Error("erro inesperado no dominio estoque", "error", err)
 		httpx.RespondError(c, http.StatusInternalServerError, "ERRO_INTERNO", "erro interno do servidor")
