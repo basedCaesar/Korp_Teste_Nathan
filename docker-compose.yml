@@ -9,7 +9,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./docker/postgres-init:/docker-entrypoint-initdb.d
+      - ./backend/docker/postgres-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U korp"]
       interval: 5s
@@ -24,7 +24,7 @@ services:
 
   estoque:
     build:
-      context: .
+      context: ./backend
       dockerfile: build/Dockerfile
       args:
         SERVICE: estoque
@@ -44,7 +44,7 @@ services:
 
   faturamento:
     build:
-      context: .
+      context: ./backend
       dockerfile: build/Dockerfile
       args:
         SERVICE: faturamento
@@ -65,7 +65,7 @@ services:
 
   auth:
     build:
-      context: .
+      context: ./backend
       dockerfile: build/Dockerfile
       args:
         SERVICE: auth
