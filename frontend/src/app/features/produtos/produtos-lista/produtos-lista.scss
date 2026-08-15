@@ -1,0 +1,27 @@
+.cabecalho {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.tabela {
+  width: 100%;
+  background: transparent;
+}
+
+.codigo {
+  font-family: 'Roboto Mono', ui-monospace, monospace;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.acoes {
+  text-align: right;
+}
+
+.carregando {
+  display: flex;
+  justify-content: center;
+  padding: 64px 0;
+}

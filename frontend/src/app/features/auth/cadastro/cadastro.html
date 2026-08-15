@@ -1,0 +1,42 @@
+<mat-card class="cartao">
+  <mat-card-header>
+    <mat-card-title>Criar conta</mat-card-title>
+  </mat-card-header>
+
+  <form [formGroup]="form" (ngSubmit)="cadastrar()">
+    <mat-card-content class="conteudo">
+      <mat-form-field appearance="outline">
+        <mat-label>E-mail</mat-label>
+        <input matInput type="email" formControlName="email" />
+        @if (form.controls.email.hasError('required') && form.controls.email.touched) {
+          <mat-error>E-mail é obrigatório</mat-error>
+        }
+        @if (form.controls.email.hasError('email') && form.controls.email.touched) {
+          <mat-error>E-mail inválido</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Senha</mat-label>
+        <input matInput type="password" formControlName="senha" />
+        @if (form.controls.senha.hasError('required') && form.controls.senha.touched) {
+          <mat-error>Senha é obrigatória</mat-error>
+        }
+        @if (form.controls.senha.hasError('minlength') && form.controls.senha.touched) {
+          <mat-error>Senha precisa ter pelo menos 6 caracteres</mat-error>
+        }
+      </mat-form-field>
+    </mat-card-content>
+
+    <mat-card-actions align="end">
+      <a mat-button routerLink="/login">Já tenho conta</a>
+      <button mat-flat-button color="primary" type="submit" [disabled]="cadastrando()">
+        @if (cadastrando()) {
+          <mat-spinner diameter="18"></mat-spinner>
+        } @else {
+          Cadastrar
+        }
+      </button>
+    </mat-card-actions>
+  </form>
+</mat-card>

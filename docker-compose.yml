@@ -94,5 +94,22 @@ services:
       timeout: 3s
       retries: 10
 
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      ESTOQUE_URL: http://localhost:8082
+      FATURAMENTO_URL: http://localhost:8083
+      AUTH_URL: http://localhost:8081
+    ports:
+      - "4200:80"
+    depends_on:
+      estoque:
+        condition: service_healthy
+      faturamento:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+
 volumes:
   pgdata:

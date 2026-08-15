@@ -1,0 +1,22 @@
+<mat-toolbar color="primary">
+  <span class="marca">Korp — Notas Fiscais</span>
+  <nav class="nav-links">
+    <a mat-button routerLink="/produtos" routerLinkActive="ativo">Produtos</a>
+    <a mat-button routerLink="/notas" routerLinkActive="ativo">Notas</a>
+  </nav>
+  <span class="espaco"></span>
+  @if (auth.logado()) {
+    <span class="usuario">{{ auth.usuario()?.email }}</span>
+    <button mat-button (click)="sair()">
+      <mat-icon>logout</mat-icon>
+      Sair
+    </button>
+  } @else {
+    <a mat-button routerLink="/login">Entrar</a>
+    <a mat-button routerLink="/cadastro">Cadastrar</a>
+  }
+</mat-toolbar>
+
+<main class="conteudo">
+  <router-outlet />
+</main>

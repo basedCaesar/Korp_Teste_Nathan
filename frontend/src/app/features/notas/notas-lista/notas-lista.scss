@@ -1,0 +1,54 @@
+.cabecalho {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.tabela {
+  width: 100%;
+  background: transparent;
+}
+
+.numero {
+  font-weight: 600;
+}
+
+.linha-clicavel {
+  cursor: pointer;
+}
+
+.linha-clicavel:hover {
+  background: var(--mat-sys-surface-container-high);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.status-aberta {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-processando {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-fechada {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.carregando {
+  display: flex;
+  justify-content: center;
+  padding: 64px 0;
+}
