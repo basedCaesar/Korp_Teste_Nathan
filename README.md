@@ -89,7 +89,7 @@ cd frontend
 npm test
 ```
 
-41 testes unitários (Vitest) — services, interceptors, `AuthService`, componentes principais.
+44 testes unitários (Vitest) — services, interceptors, `AuthService`, componentes principais.
 
 ## Testes end-to-end (frontend + backend juntos)
 
