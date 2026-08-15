@@ -26,8 +26,23 @@ CREATE TABLE IF NOT EXISTS itens_nota (
 );
 `
 
+const migrationCreateOutbox = `
+CREATE TABLE IF NOT EXISTS outbox (
+    id BIGSERIAL PRIMARY KEY,
+    nota_id BIGINT NOT NULL REFERENCES notas(id),
+    destinatario TEXT NOT NULL,
+    assunto TEXT NOT NULL,
+    corpo TEXT NOT NULL,
+    processado BOOLEAN NOT NULL DEFAULT false,
+    tentativas INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    processed_at TIMESTAMPTZ
+);
+`
+
 var Migrations = []string{
 	migrationCreateNotasSequence,
 	migrationCreateNotas,
 	migrationCreateItensNota,
+	migrationCreateOutbox,
 }

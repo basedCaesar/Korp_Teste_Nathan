@@ -10,6 +10,7 @@ import (
 	"korp/internal/db"
 	"korp/internal/faturamento"
 	"korp/internal/httpx"
+	"korp/internal/mailer"
 )
 
 func main() {
@@ -30,6 +31,20 @@ func main() {
 		slog.Error("ESTOQUE_URL nao configurada")
 		os.Exit(1)
 	}
+	smtpHost := os.Getenv("SMTP_HOST")
+	smtpPort := os.Getenv("SMTP_PORT")
+	if smtpHost == "" || smtpPort == "" {
+		slog.Error("SMTP_HOST/SMTP_PORT nao configurados")
+		os.Exit(1)
+	}
+	mailFrom := os.Getenv("MAIL_FROM")
+	if mailFrom == "" {
+		mailFrom = "noreply@korp.local"
+	}
+	notaConfirmacaoEmail := os.Getenv("NOTA_CONFIRMACAO_EMAIL")
+	if notaConfirmacaoEmail == "" {
+		notaConfirmacaoEmail = "cliente@korp.local"
+	}
 
 	ctx := context.Background()
 	pool, err := db.NewPool(ctx, databaseURL)
@@ -47,10 +62,12 @@ func main() {
 
 	repo := faturamento.NewRepository(pool)
 	estoqueClient := faturamento.NewEstoqueClient(estoqueURL)
-	svc := faturamento.NewService(repo, estoqueClient)
+	svc := faturamento.NewService(repo, estoqueClient, notaConfirmacaoEmail)
 	idemStore := httpx.NewIdempotencyStore(pool)
+	mail := mailer.New(smtpHost, smtpPort, mailFrom)
 
 	go faturamento.RunReaper(ctx, repo)
+	go faturamento.RunOutboxConsumer(ctx, repo, mail)
 
 	r := gin.New()
 	r.Use(httpx.Recovery())

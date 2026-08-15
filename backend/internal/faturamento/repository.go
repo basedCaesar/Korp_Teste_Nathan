@@ -55,6 +55,19 @@ const (
 	sqlReabrirNotasTravadas = `
 		UPDATE notas SET status = 'ABERTA', updated_at = now()
 		WHERE status = 'PROCESSANDO' AND updated_at < now() - make_interval(secs => $1)`
+
+	sqlInserirOutbox = `
+		INSERT INTO outbox (nota_id, destinatario, assunto, corpo)
+		VALUES ($1, $2, $3, $4)`
+
+	sqlListarOutboxPendente = `
+		SELECT id, nota_id, destinatario, assunto, corpo, tentativas
+		FROM outbox WHERE processado = false AND tentativas < $1
+		ORDER BY id`
+
+	sqlIncrementarTentativaOutbox = `UPDATE outbox SET tentativas = tentativas + 1 WHERE id = $1`
+
+	sqlMarcarOutboxProcessado = `UPDATE outbox SET processado = true, processed_at = now() WHERE id = $1`
 )
 
 type Repository struct {
@@ -184,6 +197,59 @@ func (r *Repository) MarcarAberta(ctx context.Context, id int64) error {
 
 func (r *Repository) MarcarFechada(ctx context.Context, id int64) error {
 	_, err := r.pool.Exec(ctx, sqlMarcarFechada, id)
+	return err
+}
+
+func (r *Repository) FecharNotaComOutbox(ctx context.Context, notaID int64, destinatario, assunto, corpo string) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, sqlMarcarFechada, notaID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, sqlInserirOutbox, notaID, destinatario, assunto, corpo); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+type OutboxItem struct {
+	ID           int64
+	NotaID       int64
+	Destinatario string
+	Assunto      string
+	Corpo        string
+	Tentativas   int
+}
+
+func (r *Repository) ListarOutboxPendente(ctx context.Context, maxTentativas int) ([]OutboxItem, error) {
+	rows, err := r.pool.Query(ctx, sqlListarOutboxPendente, maxTentativas)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	itens := []OutboxItem{}
+	for rows.Next() {
+		var o OutboxItem
+		if err := rows.Scan(&o.ID, &o.NotaID, &o.Destinatario, &o.Assunto, &o.Corpo, &o.Tentativas); err != nil {
+			return nil, err
+		}
+		itens = append(itens, o)
+	}
+	return itens, rows.Err()
+}
+
+func (r *Repository) IncrementarTentativaOutbox(ctx context.Context, id int64) error {
+	_, err := r.pool.Exec(ctx, sqlIncrementarTentativaOutbox, id)
+	return err
+}
+
+func (r *Repository) MarcarOutboxProcessado(ctx context.Context, id int64) error {
+	_, err := r.pool.Exec(ctx, sqlMarcarOutboxProcessado, id)
 	return err
 }
 

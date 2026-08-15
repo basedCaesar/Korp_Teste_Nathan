@@ -52,6 +52,10 @@ services:
       PORT: "8083"
       DATABASE_URL: postgres://korp:korp@postgres:5432/faturamento_db?sslmode=disable
       ESTOQUE_URL: http://estoque:8082
+      SMTP_HOST: mailhog
+      SMTP_PORT: "1025"
+      MAIL_FROM: noreply@korp.local
+      NOTA_CONFIRMACAO_EMAIL: cliente@korp.local
     ports:
       - "8083:8083"
     depends_on:

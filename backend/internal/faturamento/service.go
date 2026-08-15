@@ -1,14 +1,18 @@
 package faturamento
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
 type Service struct {
-	repo          *Repository
-	estoqueClient *EstoqueClient
+	repo             *Repository
+	estoqueClient    *EstoqueClient
+	notificacaoEmail string
 }
 
-func NewService(repo *Repository, estoqueClient *EstoqueClient) *Service {
-	return &Service{repo: repo, estoqueClient: estoqueClient}
+func NewService(repo *Repository, estoqueClient *EstoqueClient, notificacaoEmail string) *Service {
+	return &Service{repo: repo, estoqueClient: estoqueClient, notificacaoEmail: notificacaoEmail}
 }
 
 func (s *Service) Criar(ctx context.Context) (Nota, error) {
@@ -97,5 +101,7 @@ func (s *Service) Imprimir(ctx context.Context, requestID string, notaID int64) 
 		return err
 	}
 
-	return s.repo.MarcarFechada(ctx, notaID)
+	assunto := "Nota fiscal emitida"
+	corpo := fmt.Sprintf("A nota fiscal #%d foi emitida com sucesso.", notaID)
+	return s.repo.FecharNotaComOutbox(ctx, notaID, s.notificacaoEmail, assunto, corpo)
 }
