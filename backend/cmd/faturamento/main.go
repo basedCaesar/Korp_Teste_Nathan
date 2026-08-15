@@ -31,6 +31,11 @@ func main() {
 		slog.Error("ESTOQUE_URL nao configurada")
 		os.Exit(1)
 	}
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		slog.Error("JWT_SECRET nao configurada")
+		os.Exit(1)
+	}
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpPort := os.Getenv("SMTP_PORT")
 	if smtpHost == "" || smtpPort == "" {
@@ -74,7 +79,7 @@ func main() {
 	r.Use(httpx.RequestIDMiddleware())
 	r.Use(httpx.CORS())
 	httpx.RegisterHealth(r, "faturamento")
-	faturamento.RegisterRoutes(r, svc, idemStore)
+	faturamento.RegisterRoutes(r, svc, idemStore, jwtSecret)
 
 	slog.Info("iniciando servico", "port", port)
 	if err := r.Run(":" + port); err != nil {

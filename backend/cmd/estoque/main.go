@@ -25,6 +25,11 @@ func main() {
 		slog.Error("DATABASE_URL nao configurada")
 		os.Exit(1)
 	}
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		slog.Error("JWT_SECRET nao configurada")
+		os.Exit(1)
+	}
 
 	ctx := context.Background()
 	pool, err := db.NewPool(ctx, databaseURL)
@@ -54,7 +59,7 @@ func main() {
 	r.Use(httpx.RequestIDMiddleware())
 	r.Use(httpx.CORS())
 	httpx.RegisterHealth(r, "estoque")
-	estoque.RegisterRoutes(r, svc, idemStore)
+	estoque.RegisterRoutes(r, svc, idemStore, jwtSecret)
 
 	slog.Info("iniciando servico", "port", port)
 	if err := r.Run(":" + port); err != nil {

@@ -5,7 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 
 import { AuthService } from '../auth-service';
@@ -27,6 +27,7 @@ import { AuthService } from '../auth-service';
 export class Login {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly entrando = signal(false);
 
@@ -45,6 +46,9 @@ export class Login {
     this.auth
       .login(this.form.getRawValue())
       .pipe(finalize(() => this.entrando.set(false)))
-      .subscribe(() => this.router.navigate(['/produtos']));
+      .subscribe(() => {
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/produtos';
+        this.router.navigateByUrl(returnUrl);
+      });
   }
 }

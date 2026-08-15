@@ -41,3 +41,15 @@ func GetClaims(c *gin.Context) (jwt.MapClaims, bool) {
 	claims, ok := v.(jwt.MapClaims)
 	return claims, ok
 }
+
+func UserID(c *gin.Context) (int64, bool) {
+	claims, ok := GetClaims(c)
+	if !ok {
+		return 0, false
+	}
+	v, ok := claims["user_id"].(float64)
+	if !ok {
+		return 0, false
+	}
+	return int64(v), true
+}

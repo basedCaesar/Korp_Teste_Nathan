@@ -13,24 +13,24 @@ func NewService(repo *Repository, iaClient *IAClient) *Service {
 	return &Service{repo: repo, iaClient: iaClient}
 }
 
-func (s *Service) Criar(ctx context.Context, codigo, descricao string, saldo int) (Produto, error) {
-	return s.repo.Criar(ctx, codigo, descricao, saldo)
+func (s *Service) Criar(ctx context.Context, userID int64, codigo, descricao string, saldo int) (Produto, error) {
+	return s.repo.Criar(ctx, userID, codigo, descricao, saldo)
 }
 
-func (s *Service) Buscar(ctx context.Context, id int64) (Produto, error) {
-	return s.repo.BuscarPorID(ctx, id)
+func (s *Service) Buscar(ctx context.Context, id, userID int64) (Produto, error) {
+	return s.repo.BuscarPorID(ctx, id, userID)
 }
 
-func (s *Service) Listar(ctx context.Context) ([]Produto, error) {
-	return s.repo.Listar(ctx)
+func (s *Service) Listar(ctx context.Context, userID int64) ([]Produto, error) {
+	return s.repo.ListarPorUsuario(ctx, userID)
 }
 
-func (s *Service) Atualizar(ctx context.Context, id int64, descricao string, saldo int) (Produto, error) {
-	return s.repo.Atualizar(ctx, id, descricao, saldo)
+func (s *Service) Atualizar(ctx context.Context, id, userID int64, descricao string, saldo int) (Produto, error) {
+	return s.repo.Atualizar(ctx, id, userID, descricao, saldo)
 }
 
-func (s *Service) Excluir(ctx context.Context, id int64) error {
-	return s.repo.Excluir(ctx, id)
+func (s *Service) Excluir(ctx context.Context, id, userID int64) error {
+	return s.repo.Excluir(ctx, id, userID)
 }
 
 func (s *Service) BaixarItens(ctx context.Context, itens []ItemBaixa) error {

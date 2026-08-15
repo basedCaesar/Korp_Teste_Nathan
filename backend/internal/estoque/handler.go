@@ -15,10 +15,13 @@ type Handler struct {
 	svc *Service
 }
 
-// RegisterRoutes monta o CRUD de produtos em /produtos.
-func RegisterRoutes(r *gin.Engine, svc *Service, idemStore *httpx.IdempotencyStore) {
+// RegisterRoutes monta o CRUD de produtos em /produtos, atras de JWT (cada usuario so ve os
+// proprios produtos). /estoque/baixas fica fora do grupo: chamada interna faturamento->estoque,
+// sem usuario logado por tras.
+func RegisterRoutes(r *gin.Engine, svc *Service, idemStore *httpx.IdempotencyStore, jwtSecret string) {
 	h := &Handler{svc: svc}
 	g := r.Group("/produtos")
+	g.Use(httpx.JWTAuth(jwtSecret))
 	g.POST("", h.criar)
 	g.GET("", h.listar)
 	g.GET("/:id", h.buscar)
@@ -30,12 +33,17 @@ func RegisterRoutes(r *gin.Engine, svc *Service, idemStore *httpx.IdempotencySto
 }
 
 func (h *Handler) criar(c *gin.Context) {
+	userID, ok := httpx.UserID(c)
+	if !ok {
+		httpx.RespondError(c, http.StatusUnauthorized, "TOKEN_INVALIDO", "token de autenticacao invalido")
+		return
+	}
 	var req CriarProdutoRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		httpx.RespondValidationError(c, err)
 		return
 	}
-	produto, err := h.svc.Criar(c.Request.Context(), req.Codigo, req.Descricao, req.Saldo)
+	produto, err := h.svc.Criar(c.Request.Context(), userID, req.Codigo, req.Descricao, req.Saldo)
 	if err != nil {
 		h.responderErro(c, err)
 		return
@@ -44,7 +52,12 @@ func (h *Handler) criar(c *gin.Context) {
 }
 
 func (h *Handler) listar(c *gin.Context) {
-	produtos, err := h.svc.Listar(c.Request.Context())
+	userID, ok := httpx.UserID(c)
+	if !ok {
+		httpx.RespondError(c, http.StatusUnauthorized, "TOKEN_INVALIDO", "token de autenticacao invalido")
+		return
+	}
+	produtos, err := h.svc.Listar(c.Request.Context(), userID)
 	if err != nil {
 		h.responderErro(c, err)
 		return
@@ -57,7 +70,12 @@ func (h *Handler) buscar(c *gin.Context) {
 	if !ok {
 		return
 	}
-	produto, err := h.svc.Buscar(c.Request.Context(), id)
+	userID, ok := httpx.UserID(c)
+	if !ok {
+		httpx.RespondError(c, http.StatusUnauthorized, "TOKEN_INVALIDO", "token de autenticacao invalido")
+		return
+	}
+	produto, err := h.svc.Buscar(c.Request.Context(), id, userID)
 	if err != nil {
 		h.responderErro(c, err)
 		return
@@ -70,12 +88,17 @@ func (h *Handler) atualizar(c *gin.Context) {
 	if !ok {
 		return
 	}
+	userID, ok := httpx.UserID(c)
+	if !ok {
+		httpx.RespondError(c, http.StatusUnauthorized, "TOKEN_INVALIDO", "token de autenticacao invalido")
+		return
+	}
 	var req AtualizarProdutoRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		httpx.RespondValidationError(c, err)
 		return
 	}
-	produto, err := h.svc.Atualizar(c.Request.Context(), id, req.Descricao, req.Saldo)
+	produto, err := h.svc.Atualizar(c.Request.Context(), id, userID, req.Descricao, req.Saldo)
 	if err != nil {
 		h.responderErro(c, err)
 		return
@@ -88,7 +111,12 @@ func (h *Handler) excluir(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.svc.Excluir(c.Request.Context(), id); err != nil {
+	userID, ok := httpx.UserID(c)
+	if !ok {
+		httpx.RespondError(c, http.StatusUnauthorized, "TOKEN_INVALIDO", "token de autenticacao invalido")
+		return
+	}
+	if err := h.svc.Excluir(c.Request.Context(), id, userID); err != nil {
 		h.responderErro(c, err)
 		return
 	}

@@ -33,6 +33,7 @@ services:
       DATABASE_URL: postgres://korp:korp@postgres:5432/estoque_db?sslmode=disable
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-}
+      JWT_SECRET: troque-esse-segredo-em-producao
     ports:
       - "8082:8082"
     depends_on:
@@ -58,6 +59,7 @@ services:
       SMTP_PORT: "1025"
       MAIL_FROM: noreply@korp.local
       NOTA_CONFIRMACAO_EMAIL: cliente@korp.local
+      JWT_SECRET: troque-esse-segredo-em-producao
     ports:
       - "8083:8083"
     depends_on:

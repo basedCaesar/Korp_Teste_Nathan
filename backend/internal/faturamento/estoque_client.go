@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -97,6 +98,34 @@ func (c *EstoqueClient) enviarBaixa(ctx context.Context, requestID string, itens
 		return 0, nil, err
 	}
 	return resp.StatusCode, corpo, nil
+}
+
+// BuscarProduto valida que o produto existe e pertence ao dono do token repassado, antes de um
+// item ser gravado numa nota. Sem retry/circuit breaker aqui: e' uma checagem de validacao, nao
+// a baixa em si, chamada sincrona simples com timeout curto.
+func (c *EstoqueClient) BuscarProduto(ctx context.Context, produtoID int64, authHeader string) error {
+	url := fmt.Sprintf("%s/produtos/%d", c.baseURL, produtoID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	if authHeader != "" {
+		req.Header.Set("Authorization", authHeader)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return ErrEstoqueIndisponivel
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		return nil
+	}
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusUnauthorized {
+		return ErrProdutoInvalido
+	}
+	return ErrEstoqueIndisponivel
 }
 
 func classificarErroNegocio(corpo []byte) error {

@@ -15,9 +15,10 @@ type Handler struct {
 	svc *Service
 }
 
-func RegisterRoutes(r *gin.Engine, svc *Service, idemStore *httpx.IdempotencyStore) {
+func RegisterRoutes(r *gin.Engine, svc *Service, idemStore *httpx.IdempotencyStore, jwtSecret string) {
 	h := &Handler{svc: svc}
 	g := r.Group("/notas")
+	g.Use(httpx.JWTAuth(jwtSecret))
 	g.POST("", h.criar)
 	g.GET("", h.listar)
 	g.GET("/:id", h.buscar)
@@ -29,7 +30,11 @@ func RegisterRoutes(r *gin.Engine, svc *Service, idemStore *httpx.IdempotencySto
 }
 
 func (h *Handler) criar(c *gin.Context) {
-	nota, err := h.svc.Criar(c.Request.Context())
+	userID, ok := exigirUserID(c)
+	if !ok {
+		return
+	}
+	nota, err := h.svc.Criar(c.Request.Context(), userID)
 	if err != nil {
 		h.responderErro(c, err)
 		return
@@ -38,7 +43,11 @@ func (h *Handler) criar(c *gin.Context) {
 }
 
 func (h *Handler) listar(c *gin.Context) {
-	notas, err := h.svc.Listar(c.Request.Context())
+	userID, ok := exigirUserID(c)
+	if !ok {
+		return
+	}
+	notas, err := h.svc.Listar(c.Request.Context(), userID)
 	if err != nil {
 		h.responderErro(c, err)
 		return
@@ -51,7 +60,11 @@ func (h *Handler) buscar(c *gin.Context) {
 	if !ok {
 		return
 	}
-	nota, err := h.svc.Buscar(c.Request.Context(), id)
+	userID, ok := exigirUserID(c)
+	if !ok {
+		return
+	}
+	nota, err := h.svc.Buscar(c.Request.Context(), id, userID)
 	if err != nil {
 		h.responderErro(c, err)
 		return
@@ -64,7 +77,11 @@ func (h *Handler) excluir(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.svc.Excluir(c.Request.Context(), id); err != nil {
+	userID, ok := exigirUserID(c)
+	if !ok {
+		return
+	}
+	if err := h.svc.Excluir(c.Request.Context(), id, userID); err != nil {
 		h.responderErro(c, err)
 		return
 	}
@@ -76,12 +93,16 @@ func (h *Handler) adicionarItem(c *gin.Context) {
 	if !ok {
 		return
 	}
+	userID, ok := exigirUserID(c)
+	if !ok {
+		return
+	}
 	var req AdicionarItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		httpx.RespondValidationError(c, err)
 		return
 	}
-	item, err := h.svc.AdicionarItem(c.Request.Context(), notaID, req.ProdutoID, req.ProdutoCodigo, req.ProdutoDescricao, req.Quantidade)
+	item, err := h.svc.AdicionarItem(c.Request.Context(), c.GetHeader("Authorization"), notaID, userID, req.ProdutoID, req.ProdutoCodigo, req.ProdutoDescricao, req.Quantidade)
 	if err != nil {
 		h.responderErro(c, err)
 		return
@@ -98,12 +119,16 @@ func (h *Handler) atualizarItem(c *gin.Context) {
 	if !ok {
 		return
 	}
+	userID, ok := exigirUserID(c)
+	if !ok {
+		return
+	}
 	var req AtualizarItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		httpx.RespondValidationError(c, err)
 		return
 	}
-	item, err := h.svc.AtualizarItem(c.Request.Context(), notaID, itemID, req.Quantidade)
+	item, err := h.svc.AtualizarItem(c.Request.Context(), notaID, itemID, userID, req.Quantidade)
 	if err != nil {
 		h.responderErro(c, err)
 		return
@@ -120,7 +145,11 @@ func (h *Handler) removerItem(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.svc.RemoverItem(c.Request.Context(), notaID, itemID); err != nil {
+	userID, ok := exigirUserID(c)
+	if !ok {
+		return
+	}
+	if err := h.svc.RemoverItem(c.Request.Context(), notaID, itemID, userID); err != nil {
 		h.responderErro(c, err)
 		return
 	}
@@ -132,7 +161,11 @@ func (h *Handler) imprimir(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.svc.Imprimir(c.Request.Context(), httpx.RequestID(c), notaID); err != nil {
+	userID, ok := exigirUserID(c)
+	if !ok {
+		return
+	}
+	if err := h.svc.Imprimir(c.Request.Context(), httpx.RequestID(c), notaID, userID); err != nil {
 		h.responderErro(c, err)
 		return
 	}
@@ -148,6 +181,15 @@ func parseIDParam(c *gin.Context, nome string) (int64, bool) {
 	return id, true
 }
 
+func exigirUserID(c *gin.Context) (int64, bool) {
+	userID, ok := httpx.UserID(c)
+	if !ok {
+		httpx.RespondError(c, http.StatusUnauthorized, "TOKEN_INVALIDO", "token de autenticacao invalido")
+		return 0, false
+	}
+	return userID, true
+}
+
 func (h *Handler) responderErro(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, ErrNotaNaoEncontrada):
@@ -160,6 +202,8 @@ func (h *Handler) responderErro(c *gin.Context, err error) {
 		httpx.RespondError(c, http.StatusConflict, "SALDO_INSUFICIENTE", err.Error())
 	case errors.Is(err, ErrEstoqueIndisponivel):
 		httpx.RespondError(c, http.StatusServiceUnavailable, "ESTOQUE_INDISPONIVEL", err.Error())
+	case errors.Is(err, ErrProdutoInvalido):
+		httpx.RespondError(c, http.StatusBadRequest, "PRODUTO_INVALIDO", err.Error())
 	default:
 		slog.Error("erro inesperado no dominio faturamento", "error", err)
 		httpx.RespondError(c, http.StatusInternalServerError, "ERRO_INTERNO", "erro interno do servidor")

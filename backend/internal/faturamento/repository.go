@@ -11,19 +11,20 @@ import (
 
 const (
 	sqlInserirNota = `
-		INSERT INTO notas DEFAULT VALUES
+		INSERT INTO notas (user_id)
+		VALUES ($1)
 		RETURNING id, numero, status, created_at, updated_at`
 
 	sqlBuscarNota = `
 		SELECT id, numero, status, created_at, updated_at
-		FROM notas WHERE id = $1`
+		FROM notas WHERE id = $1 AND user_id = $2`
 
 	sqlListarNotas = `
 		SELECT id, numero, status, created_at, updated_at
-		FROM notas ORDER BY id`
+		FROM notas WHERE user_id = $1 ORDER BY id`
 
 	sqlExcluirNota = `
-		DELETE FROM notas WHERE id = $1 AND status = 'ABERTA'`
+		DELETE FROM notas WHERE id = $1 AND user_id = $2 AND status = 'ABERTA'`
 
 	sqlListarItens = `
 		SELECT id, nota_id, produto_id, produto_codigo, produto_descricao, quantidade, created_at
@@ -44,7 +45,7 @@ const (
 
 	sqlMarcarProcessando = `
 		UPDATE notas SET status = 'PROCESSANDO', updated_at = now()
-		WHERE id = $1 AND status = 'ABERTA'`
+		WHERE id = $1 AND user_id = $2 AND status = 'ABERTA'`
 
 	sqlMarcarAberta = `
 		UPDATE notas SET status = 'ABERTA', updated_at = now() WHERE id = $1`
@@ -90,13 +91,13 @@ func scanItem(row pgx.Row) (Item, error) {
 	return i, err
 }
 
-func (r *Repository) CriarNota(ctx context.Context) (Nota, error) {
-	row := r.pool.QueryRow(ctx, sqlInserirNota)
+func (r *Repository) CriarNota(ctx context.Context, userID int64) (Nota, error) {
+	row := r.pool.QueryRow(ctx, sqlInserirNota, userID)
 	return scanNota(row)
 }
 
-func (r *Repository) BuscarNota(ctx context.Context, id int64) (Nota, error) {
-	row := r.pool.QueryRow(ctx, sqlBuscarNota, id)
+func (r *Repository) BuscarNota(ctx context.Context, id, userID int64) (Nota, error) {
+	row := r.pool.QueryRow(ctx, sqlBuscarNota, id, userID)
 	n, err := scanNota(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Nota{}, ErrNotaNaoEncontrada
@@ -104,8 +105,8 @@ func (r *Repository) BuscarNota(ctx context.Context, id int64) (Nota, error) {
 	return n, err
 }
 
-func (r *Repository) ListarNotas(ctx context.Context) ([]Nota, error) {
-	rows, err := r.pool.Query(ctx, sqlListarNotas)
+func (r *Repository) ListarNotas(ctx context.Context, userID int64) ([]Nota, error) {
+	rows, err := r.pool.Query(ctx, sqlListarNotas, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -122,8 +123,8 @@ func (r *Repository) ListarNotas(ctx context.Context) ([]Nota, error) {
 	return notas, rows.Err()
 }
 
-func (r *Repository) ExcluirNota(ctx context.Context, id int64) error {
-	tag, err := r.pool.Exec(ctx, sqlExcluirNota, id)
+func (r *Repository) ExcluirNota(ctx context.Context, id, userID int64) error {
+	tag, err := r.pool.Exec(ctx, sqlExcluirNota, id, userID)
 	if err != nil {
 		return err
 	}
@@ -176,15 +177,15 @@ func (r *Repository) RemoverItem(ctx context.Context, notaID, itemID int64) erro
 	return nil
 }
 
-func (r *Repository) MarcarProcessando(ctx context.Context, id int64) error {
-	tag, err := r.pool.Exec(ctx, sqlMarcarProcessando, id)
+func (r *Repository) MarcarProcessando(ctx context.Context, id, userID int64) error {
+	tag, err := r.pool.Exec(ctx, sqlMarcarProcessando, id, userID)
 	if err != nil {
 		return err
 	}
 	if tag.RowsAffected() == 1 {
 		return nil
 	}
-	if _, err := r.BuscarNota(ctx, id); err != nil {
+	if _, err := r.BuscarNota(ctx, id, userID); err != nil {
 		return err
 	}
 	return ErrNotaNaoAberta

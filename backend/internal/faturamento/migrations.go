@@ -40,9 +40,19 @@ CREATE TABLE IF NOT EXISTS outbox (
 );
 `
 
+const migrationAddNotasUserID = `
+ALTER TABLE notas ADD COLUMN IF NOT EXISTS user_id BIGINT NOT NULL DEFAULT 0;
+`
+
+const migrationIndexNotasUserID = `
+CREATE INDEX IF NOT EXISTS idx_notas_user_id ON notas(user_id);
+`
+
 var Migrations = []string{
 	migrationCreateNotasSequence,
 	migrationCreateNotas,
 	migrationCreateItensNota,
 	migrationCreateOutbox,
+	migrationAddNotasUserID,
+	migrationIndexNotasUserID,
 }
