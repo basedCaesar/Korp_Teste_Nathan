@@ -13,31 +13,35 @@ import (
 // SQL em const, nunca montado por concatenacao.
 const (
 	sqlInserirProduto = `
-		INSERT INTO produtos (codigo, descricao, saldo, user_id)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, codigo, descricao, saldo, version, created_at, updated_at`
+		INSERT INTO produtos (codigo, descricao, saldo, user_id, categoria)
+		VALUES ($1, $2, $3, $4, NULLIF($5, ''))
+		RETURNING id, codigo, descricao, saldo, COALESCE(categoria, ''), version, created_at, updated_at`
 
 	sqlBuscarProduto = `
-		SELECT id, codigo, descricao, saldo, version, created_at, updated_at
+		SELECT id, codigo, descricao, saldo, COALESCE(categoria, ''), version, created_at, updated_at
 		FROM produtos WHERE id = $1`
 
 	sqlBuscarProdutoDoUsuario = `
-		SELECT id, codigo, descricao, saldo, version, created_at, updated_at
+		SELECT id, codigo, descricao, saldo, COALESCE(categoria, ''), version, created_at, updated_at
 		FROM produtos WHERE id = $1 AND user_id = $2`
 
 	sqlListarProdutos = `
-		SELECT id, codigo, descricao, saldo, version, created_at, updated_at
+		SELECT id, codigo, descricao, saldo, COALESCE(categoria, ''), version, created_at, updated_at
 		FROM produtos ORDER BY id`
 
 	sqlListarProdutosDoUsuario = `
-		SELECT id, codigo, descricao, saldo, version, created_at, updated_at
+		SELECT id, codigo, descricao, saldo, COALESCE(categoria, ''), version, created_at, updated_at
 		FROM produtos WHERE user_id = $1 ORDER BY id`
+
+	sqlListarProdutosPorCategoria = `
+		SELECT id, codigo, descricao, saldo, COALESCE(categoria, ''), version, created_at, updated_at
+		FROM produtos WHERE LOWER(categoria) = LOWER($1) ORDER BY id`
 
 	sqlAtualizarProduto = `
 		UPDATE produtos
-		SET descricao = $2, saldo = $3, version = version + 1, updated_at = now()
+		SET descricao = $2, saldo = $3, categoria = NULLIF($5, ''), version = version + 1, updated_at = now()
 		WHERE id = $1 AND user_id = $4
-		RETURNING id, codigo, descricao, saldo, version, created_at, updated_at`
+		RETURNING id, codigo, descricao, saldo, COALESCE(categoria, ''), version, created_at, updated_at`
 
 	sqlExcluirProduto = `DELETE FROM produtos WHERE id = $1 AND user_id = $2`
 
@@ -65,12 +69,12 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 
 func scanProduto(row pgx.Row) (Produto, error) {
 	var p Produto
-	err := row.Scan(&p.ID, &p.Codigo, &p.Descricao, &p.Saldo, &p.Version, &p.CreatedAt, &p.UpdatedAt)
+	err := row.Scan(&p.ID, &p.Codigo, &p.Descricao, &p.Saldo, &p.Categoria, &p.Version, &p.CreatedAt, &p.UpdatedAt)
 	return p, err
 }
 
-func (r *Repository) Criar(ctx context.Context, userID int64, codigo, descricao string, saldo int) (Produto, error) {
-	row := r.pool.QueryRow(ctx, sqlInserirProduto, codigo, descricao, saldo, userID)
+func (r *Repository) Criar(ctx context.Context, userID int64, codigo, descricao string, saldo int, categoria string) (Produto, error) {
+	row := r.pool.QueryRow(ctx, sqlInserirProduto, codigo, descricao, saldo, userID, categoria)
 	p, err := scanProduto(row)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -136,8 +140,26 @@ func (r *Repository) ListarPorUsuario(ctx context.Context, userID int64) ([]Prod
 	return produtos, rows.Err()
 }
 
-func (r *Repository) Atualizar(ctx context.Context, id, userID int64, descricao string, saldo int) (Produto, error) {
-	row := r.pool.QueryRow(ctx, sqlAtualizarProduto, id, descricao, saldo, userID)
+func (r *Repository) ListarPorCategoria(ctx context.Context, categoria string) ([]Produto, error) {
+	rows, err := r.pool.Query(ctx, sqlListarProdutosPorCategoria, categoria)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	produtos := []Produto{}
+	for rows.Next() {
+		p, err := scanProduto(rows)
+		if err != nil {
+			return nil, err
+		}
+		produtos = append(produtos, p)
+	}
+	return produtos, rows.Err()
+}
+
+func (r *Repository) Atualizar(ctx context.Context, id, userID int64, descricao string, saldo int, categoria string) (Produto, error) {
+	row := r.pool.QueryRow(ctx, sqlAtualizarProduto, id, descricao, saldo, userID, categoria)
 	p, err := scanProduto(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Produto{}, ErrProdutoNaoEncontrado

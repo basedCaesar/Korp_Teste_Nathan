@@ -84,7 +84,7 @@ Authorization: Bearer {{login.response.body.$.token}}
 
 ### ==================== ESTOQUE: PRODUTOS (exige Authorization — cada usuario so ve os proprios) ====================
 
-### criar produto
+### criar produto (categoria e opcional)
 # @name criarProduto
 POST {{estoque}}/produtos
 Authorization: Bearer {{login.response.body.$.token}}
@@ -93,7 +93,19 @@ Content-Type: application/json
 {
   "codigo": "P001",
   "descricao": "Parafuso sextavado",
-  "saldo": 100
+  "saldo": 100,
+  "categoria": "Fixacao"
+}
+
+### criar produto sem categoria (continua funcionando normal)
+POST {{estoque}}/produtos
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "codigo": "P002",
+  "descricao": "Sem categoria",
+  "saldo": 10
 }
 
 ### criar produto com codigo duplicado (espera 409 CODIGO_DUPLICADO)
@@ -146,7 +158,8 @@ Content-Type: application/json
 
 {
   "descricao": "Parafuso sextavado grande",
-  "saldo": 150
+  "saldo": 150,
+  "categoria": "Fixacao"
 }
 
 ### excluir produto
@@ -159,14 +172,26 @@ Authorization: Bearer {{login.response.body.$.token}}
 ### IA_INDISPONIVEL de forma graciosa em vez de derrubar o servico. Exige login igual as demais
 ### rotas de /produtos, mas o catalogo consultado pela IA e' de todos os usuarios, nao so do
 ### usuario logado (proposital — a sugestao usa o catalogo inteiro pra comparar produtos).
+### "categoria" e opcional: se informada, pre-filtra o catalogo so pra produtos daquela
+### categoria antes de perguntar pra IA (sugestao mais precisa, catalogo menor).
 
-### sugerir descricao + produtos similares pra um codigo novo
+### sugerir descricao + produtos similares pra um codigo novo (sem categoria — catalogo inteiro)
 POST {{estoque}}/produtos/sugestao
 Authorization: Bearer {{login.response.body.$.token}}
 Content-Type: application/json
 
 {
   "codigo": "TEC-045"
+}
+
+### sugerir informando categoria (so considera produtos dessa categoria como similares)
+POST {{estoque}}/produtos/sugestao
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "codigo": "CAB-HDMI-01",
+  "categoria": "Perifericos"
 }
 
 ### sugestao sem informar codigo (espera 400 VALIDACAO)

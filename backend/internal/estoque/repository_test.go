@@ -19,9 +19,10 @@ func (r fakeRow) Scan(dest ...any) error {
 	*dest[1].(*string) = r.produto.Codigo
 	*dest[2].(*string) = r.produto.Descricao
 	*dest[3].(*int) = r.produto.Saldo
-	*dest[4].(*int) = r.produto.Version
-	*dest[5].(*time.Time) = r.produto.CreatedAt
-	*dest[6].(*time.Time) = r.produto.UpdatedAt
+	*dest[4].(*string) = r.produto.Categoria
+	*dest[5].(*int) = r.produto.Version
+	*dest[6].(*time.Time) = r.produto.CreatedAt
+	*dest[7].(*time.Time) = r.produto.UpdatedAt
 	return nil
 }
 

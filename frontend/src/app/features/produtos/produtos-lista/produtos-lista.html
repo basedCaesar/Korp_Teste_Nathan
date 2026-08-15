@@ -34,6 +34,11 @@
           <td mat-cell *matCellDef="let produto">{{ produto.saldo }}</td>
         </ng-container>
 
+        <ng-container matColumnDef="categoria">
+          <th mat-header-cell *matHeaderCellDef>Categoria</th>
+          <td mat-cell *matCellDef="let produto">{{ produto.categoria || '—' }}</td>
+        </ng-container>
+
         <ng-container matColumnDef="acoes">
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let produto" class="acoes">

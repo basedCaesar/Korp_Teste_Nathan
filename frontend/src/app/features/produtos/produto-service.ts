@@ -34,15 +34,19 @@ export class ProdutoService {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 
-  sugerir(codigo: string): Observable<SugestaoProduto> {
-    return this.http.post<SugestaoProduto>(`${this.baseUrl}/sugestao`, { codigo });
+  sugerir(codigo: string, categoria: string): Observable<SugestaoProduto> {
+    return this.http.post<SugestaoProduto>(`${this.baseUrl}/sugestao`, { codigo, categoria });
   }
 
-  sugestaoAoDigitar(codigo$: Observable<string>): Observable<SugestaoProduto | null> {
-    return codigo$.pipe(
+  sugestaoAoDigitar(
+    entrada$: Observable<{ codigo: string; categoria: string }>,
+  ): Observable<SugestaoProduto | null> {
+    return entrada$.pipe(
       debounceTime(600),
-      distinctUntilChanged(),
-      switchMap((codigo) => this.sugerir(codigo).pipe(catchError(() => of(null)))),
+      distinctUntilChanged((a, b) => a.codigo === b.codigo && a.categoria === b.categoria),
+      switchMap(({ codigo, categoria }) =>
+        this.sugerir(codigo, categoria).pipe(catchError(() => of(null))),
+      ),
     );
   }
 }

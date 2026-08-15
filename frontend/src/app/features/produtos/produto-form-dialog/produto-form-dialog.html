@@ -7,14 +7,30 @@
       <input
         matInput
         formControlName="codigo"
-        (input)="aoDigitarCodigo($any($event.target).value)"
+        (input)="aoMudarCodigoOuCategoria()"
         placeholder="Ex: TEC-001"
       />
-      @if (sugerindo()) {
-        <mat-hint>Consultando sugestão via IA…</mat-hint>
-      }
       @if (form.controls.codigo.hasError('required') && form.controls.codigo.touched) {
         <mat-error>Código é obrigatório</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Categoria</mat-label>
+      <input
+        matInput
+        formControlName="categoria"
+        (input)="aoMudarCodigoOuCategoria()"
+        [matAutocomplete]="autoCategoria"
+        placeholder="Ex: Perifericos"
+      />
+      <mat-autocomplete #autoCategoria="matAutocomplete" (optionSelected)="aoMudarCodigoOuCategoria()">
+        @for (categoria of categoriasFiltradas(); track categoria) {
+          <mat-option [value]="categoria">{{ categoria }}</mat-option>
+        }
+      </mat-autocomplete>
+      @if (sugerindo()) {
+        <mat-hint>Consultando sugestão via IA…</mat-hint>
       }
     </mat-form-field>
 

@@ -5,12 +5,14 @@ type CriarProdutoRequest struct {
 	Codigo    string `json:"codigo" binding:"required"`
 	Descricao string `json:"descricao" binding:"required"`
 	Saldo     int    `json:"saldo" binding:"gte=0"`
+	Categoria string `json:"categoria"`
 }
 
 // AtualizarProdutoRequest e o corpo esperado em PUT /produtos/:id.
 type AtualizarProdutoRequest struct {
 	Descricao string `json:"descricao" binding:"required"`
 	Saldo     int    `json:"saldo" binding:"gte=0"`
+	Categoria string `json:"categoria"`
 }
 
 type BaixarRequest struct {
@@ -23,7 +25,8 @@ type ItemBaixaRequest struct {
 }
 
 type SugestaoRequest struct {
-	Codigo string `json:"codigo" binding:"required"`
+	Codigo    string `json:"codigo" binding:"required"`
+	Categoria string `json:"categoria"`
 }
 
 type SugestaoResponse struct {

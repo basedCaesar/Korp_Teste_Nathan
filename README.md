@@ -136,8 +136,13 @@ pra quem tenta acessar que aquele id existe e é de outra conta.
 
 ## Feature opcional: sugestão de produto via IA
 
-`POST /produtos/sugestao` (estoque) sugere descrição + produtos similares a partir só do
-`codigo`, usando a API do Google Gemini. Precisa de uma chave gratuita:
+`POST /produtos/sugestao` (estoque) sugere descrição + produtos similares a partir do `codigo`
+e, opcionalmente, `categoria` — usando a API do Google Gemini. Produto tem um campo `categoria`
+livre (texto, opcional); informar categoria na sugestão pré-filtra o catálogo só pra produtos
+daquela categoria antes de perguntar pra IA, deixando a sugestão mais precisa (sem categoria,
+a IA tem que adivinhar a categoria só pelo padrão do código). No frontend, o campo sugere as
+categorias que o próprio usuário já usou (autocomplete), mas aceita digitar uma nova. Precisa
+de uma chave gratuita pra usar o endpoint:
 
 1. Cria conta em [aistudio.google.com](https://aistudio.google.com) (sem cartão)
 2. Gera uma chave em "Get API key"

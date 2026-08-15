@@ -60,31 +60,41 @@ type geminiResponse struct {
 	} `json:"candidates"`
 }
 
-func (c *IAClient) Sugerir(ctx context.Context, codigo string, catalogo []Produto) (string, []string, error) {
+func (c *IAClient) Sugerir(ctx context.Context, codigo, categoria string, catalogo []Produto) (string, []string, error) {
 	if c.apiKey == "" {
 		return "", nil, ErrIAIndisponivel
 	}
 
 	var catalogoTexto strings.Builder
 	for _, p := range catalogo {
-		fmt.Fprintf(&catalogoTexto, "- %s: %s\n", p.Codigo, p.Descricao)
+		if p.Categoria != "" {
+			fmt.Fprintf(&catalogoTexto, "- %s: %s (%s)\n", p.Codigo, p.Descricao, p.Categoria)
+		} else {
+			fmt.Fprintf(&catalogoTexto, "- %s: %s\n", p.Codigo, p.Descricao)
+		}
 	}
 	if catalogoTexto.Len() == 0 {
 		catalogoTexto.WriteString("(catalogo vazio)\n")
 	}
 
+	categoriaTexto := "nao informada"
+	if categoria != "" {
+		categoriaTexto = categoria
+	}
+
 	prompt := fmt.Sprintf(`Voce ajuda a cadastrar produtos num sistema de estoque.
 
 Codigo do novo produto: %s
+Categoria do novo produto: %s
 
-Catalogo de produtos ja cadastrados (codigo: descricao):
+Catalogo de produtos ja cadastrados (codigo: descricao (categoria)):
 %s
 Tarefa:
-1. Sugira uma descricao curta e realista para o produto de codigo %q, baseada no padrao dos codigos/descricoes existentes.
-2. Aponte, no maximo 3, codigos do catalogo acima que sejam produtos similares (mesma categoria/familia). Se nao houver nenhum similar, devolva lista vazia.
+1. Sugira uma descricao curta e realista para o produto de codigo %q, baseada na categoria informada (se houver) e no padrao dos codigos/descricoes existentes.
+2. Aponte, no maximo 3, codigos do catalogo acima que sejam produtos similares (mesma categoria/familia). Se a categoria foi informada, priorize produtos dessa mesma categoria. Se nao houver nenhum similar, devolva lista vazia.
 
 Responda APENAS com JSON valido, sem markdown, no formato exato:
-{"descricao": "...", "similares": ["COD1", "COD2"]}`, codigo, catalogoTexto.String(), codigo)
+{"descricao": "...", "similares": ["COD1", "COD2"]}`, codigo, categoriaTexto, catalogoTexto.String(), codigo)
 
 	reqBody, err := json.Marshal(geminiRequest{
 		Contents: []geminiContent{{Parts: []geminiPart{{Text: prompt}}}},

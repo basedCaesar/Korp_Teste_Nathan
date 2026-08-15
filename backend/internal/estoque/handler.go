@@ -43,7 +43,7 @@ func (h *Handler) criar(c *gin.Context) {
 		httpx.RespondValidationError(c, err)
 		return
 	}
-	produto, err := h.svc.Criar(c.Request.Context(), userID, req.Codigo, req.Descricao, req.Saldo)
+	produto, err := h.svc.Criar(c.Request.Context(), userID, req.Codigo, req.Descricao, req.Saldo, req.Categoria)
 	if err != nil {
 		h.responderErro(c, err)
 		return
@@ -98,7 +98,7 @@ func (h *Handler) atualizar(c *gin.Context) {
 		httpx.RespondValidationError(c, err)
 		return
 	}
-	produto, err := h.svc.Atualizar(c.Request.Context(), id, userID, req.Descricao, req.Saldo)
+	produto, err := h.svc.Atualizar(c.Request.Context(), id, userID, req.Descricao, req.Saldo, req.Categoria)
 	if err != nil {
 		h.responderErro(c, err)
 		return
@@ -146,7 +146,7 @@ func (h *Handler) sugerir(c *gin.Context) {
 		httpx.RespondValidationError(c, err)
 		return
 	}
-	resp, err := h.svc.Sugerir(c.Request.Context(), req.Codigo)
+	resp, err := h.svc.Sugerir(c.Request.Context(), req.Codigo, req.Categoria)
 	if err != nil {
 		h.responderErro(c, err)
 		return

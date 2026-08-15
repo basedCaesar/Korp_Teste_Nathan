@@ -12,6 +12,7 @@ describe('ProdutoFormDialog', () => {
     criar: ReturnType<typeof vi.fn>;
     atualizar: ReturnType<typeof vi.fn>;
     sugestaoAoDigitar: ReturnType<typeof vi.fn>;
+    listar: ReturnType<typeof vi.fn>;
   };
   let dialogRefMock: { close: ReturnType<typeof vi.fn> };
   let notificacaoMock: { sucesso: ReturnType<typeof vi.fn>; erro: ReturnType<typeof vi.fn> };
@@ -36,6 +37,7 @@ describe('ProdutoFormDialog', () => {
       criar: vi.fn(),
       atualizar: vi.fn(),
       sugestaoAoDigitar: vi.fn().mockReturnValue(of()),
+      listar: vi.fn().mockReturnValue(of([])),
     };
     dialogRefMock = { close: vi.fn() };
     notificacaoMock = { sucesso: vi.fn(), erro: vi.fn() };
@@ -57,6 +59,7 @@ describe('ProdutoFormDialog', () => {
       codigo: 'P010',
       descricao: 'Chave de fenda',
       saldo: 20,
+      categoria: 'Ferramentas',
       version: 0,
       created_at: '',
       updated_at: '',
@@ -68,6 +71,7 @@ describe('ProdutoFormDialog', () => {
       codigo: 'P010',
       descricao: 'Chave de fenda',
       saldo: 20,
+      categoria: 'Ferramentas',
     });
 
     fixture.componentInstance['salvar']();
@@ -76,6 +80,7 @@ describe('ProdutoFormDialog', () => {
       codigo: 'P010',
       descricao: 'Chave de fenda',
       saldo: 20,
+      categoria: 'Ferramentas',
     });
     expect(dialogRefMock.close).toHaveBeenCalledWith(produtoCriado);
   });
@@ -86,6 +91,7 @@ describe('ProdutoFormDialog', () => {
       codigo: 'P020',
       descricao: 'Martelo',
       saldo: 4,
+      categoria: 'Ferramentas',
       version: 2,
       created_at: '',
       updated_at: '',
@@ -100,6 +106,7 @@ describe('ProdutoFormDialog', () => {
     expect(produtoServiceMock.atualizar).toHaveBeenCalledWith(5, {
       descricao: 'Martelo',
       saldo: 9,
+      categoria: 'Ferramentas',
     });
   });
 
@@ -109,5 +116,20 @@ describe('ProdutoFormDialog', () => {
     fixture.componentInstance['cancelar']();
 
     expect(dialogRefMock.close).toHaveBeenCalledWith(null);
+  });
+
+  it('carrega as categorias distintas ja usadas pelo usuario', () => {
+    produtoServiceMock.listar.mockReturnValue(
+      of([
+        { id: 1, codigo: 'A', descricao: '', saldo: 0, categoria: 'Perifericos', version: 0, created_at: '', updated_at: '' },
+        { id: 2, codigo: 'B', descricao: '', saldo: 0, categoria: 'Perifericos', version: 0, created_at: '', updated_at: '' },
+        { id: 3, codigo: 'C', descricao: '', saldo: 0, categoria: 'Cabos', version: 0, created_at: '', updated_at: '' },
+        { id: 4, codigo: 'D', descricao: '', saldo: 0, categoria: '', version: 0, created_at: '', updated_at: '' },
+      ]),
+    );
+
+    const fixture = montar({ produto: null });
+
+    expect(fixture.componentInstance['categoriasExistentes']()).toEqual(['Perifericos', 'Cabos']);
   });
 });

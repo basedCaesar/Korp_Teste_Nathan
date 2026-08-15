@@ -36,6 +36,7 @@ describe('ProdutoService', () => {
         codigo: 'P001',
         descricao: 'Parafuso',
         saldo: 10,
+        categoria: '',
         version: 0,
         created_at: '',
         updated_at: '',
@@ -52,20 +53,20 @@ describe('ProdutoService', () => {
   });
 
   it('cria produto com POST no corpo certo', () => {
-    service.criar({ codigo: 'P002', descricao: 'Porca', saldo: 5 }).subscribe();
+    service.criar({ codigo: 'P002', descricao: 'Porca', saldo: 5, categoria: 'Fixacao' }).subscribe();
 
     const req = http.expectOne('http://estoque.test/produtos');
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ codigo: 'P002', descricao: 'Porca', saldo: 5 });
+    expect(req.request.body).toEqual({ codigo: 'P002', descricao: 'Porca', saldo: 5, categoria: 'Fixacao' });
     req.flush({});
   });
 
   it('atualiza produto sem enviar o codigo (imutavel)', () => {
-    service.atualizar(7, { descricao: 'Nova descricao', saldo: 20 }).subscribe();
+    service.atualizar(7, { descricao: 'Nova descricao', saldo: 20, categoria: 'Fixacao' }).subscribe();
 
     const req = http.expectOne('http://estoque.test/produtos/7');
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toEqual({ descricao: 'Nova descricao', saldo: 20 });
+    expect(req.request.body).toEqual({ descricao: 'Nova descricao', saldo: 20, categoria: 'Fixacao' });
     req.flush({});
   });
 
@@ -77,46 +78,71 @@ describe('ProdutoService', () => {
     req.flush(null);
   });
 
-  it('pede sugestao via IA com o codigo informado', () => {
-    service.sugerir('TEC-045').subscribe();
+  it('pede sugestao via IA com o codigo e a categoria informados', () => {
+    service.sugerir('TEC-045', 'Perifericos').subscribe();
 
     const req = http.expectOne('http://estoque.test/produtos/sugestao');
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ codigo: 'TEC-045' });
+    expect(req.request.body).toEqual({ codigo: 'TEC-045', categoria: 'Perifericos' });
     req.flush({ codigo: 'TEC-045', descricao_sugerida: '', produtos_similares: [] });
   });
 
   it('sugestaoAoDigitar so chama a API depois do debounce, e so 1x para digitacao repetida', () => {
     vi.useFakeTimers();
-    const codigo$ = new Subject<string>();
+    const entrada$ = new Subject<{ codigo: string; categoria: string }>();
     const emissoes: unknown[] = [];
 
-    service.sugestaoAoDigitar(codigo$).subscribe((valor) => emissoes.push(valor));
+    service.sugestaoAoDigitar(entrada$).subscribe((valor) => emissoes.push(valor));
 
-    codigo$.next('T');
-    codigo$.next('TE');
-    codigo$.next('TEC');
+    entrada$.next({ codigo: 'T', categoria: '' });
+    entrada$.next({ codigo: 'TE', categoria: '' });
+    entrada$.next({ codigo: 'TEC', categoria: '' });
     vi.advanceTimersByTime(599);
 
     http.expectNone((req) => req.url.endsWith('/produtos/sugestao'));
     vi.advanceTimersByTime(1);
 
     const req = http.expectOne('http://estoque.test/produtos/sugestao');
-    expect(req.request.body).toEqual({ codigo: 'TEC' });
+    expect(req.request.body).toEqual({ codigo: 'TEC', categoria: '' });
     req.flush({ codigo: 'TEC', descricao_sugerida: 'x', produtos_similares: [] });
 
     expect(emissoes.length).toBe(1);
     vi.useRealTimers();
   });
 
-  it('sugestaoAoDigitar sobrevive a uma falha e ainda responde ao proximo codigo digitado', () => {
+  it('sugestaoAoDigitar dispara de novo quando so a categoria muda', () => {
     vi.useFakeTimers();
-    const codigo$ = new Subject<string>();
+    const entrada$ = new Subject<{ codigo: string; categoria: string }>();
     const emissoes: unknown[] = [];
 
-    service.sugestaoAoDigitar(codigo$).subscribe((valor) => emissoes.push(valor));
+    service.sugestaoAoDigitar(entrada$).subscribe((valor) => emissoes.push(valor));
 
-    codigo$.next('FALHA');
+    entrada$.next({ codigo: 'TEC', categoria: '' });
+    vi.advanceTimersByTime(600);
+    http.expectOne('http://estoque.test/produtos/sugestao').flush({
+      codigo: 'TEC',
+      descricao_sugerida: '',
+      produtos_similares: [],
+    });
+
+    entrada$.next({ codigo: 'TEC', categoria: 'Perifericos' });
+    vi.advanceTimersByTime(600);
+    const req = http.expectOne('http://estoque.test/produtos/sugestao');
+    expect(req.request.body).toEqual({ codigo: 'TEC', categoria: 'Perifericos' });
+    req.flush({ codigo: 'TEC', descricao_sugerida: '', produtos_similares: [] });
+
+    expect(emissoes.length).toBe(2);
+    vi.useRealTimers();
+  });
+
+  it('sugestaoAoDigitar sobrevive a uma falha e ainda responde ao proximo codigo digitado', () => {
+    vi.useFakeTimers();
+    const entrada$ = new Subject<{ codigo: string; categoria: string }>();
+    const emissoes: unknown[] = [];
+
+    service.sugestaoAoDigitar(entrada$).subscribe((valor) => emissoes.push(valor));
+
+    entrada$.next({ codigo: 'FALHA', categoria: '' });
     vi.advanceTimersByTime(600);
     http
       .expectOne('http://estoque.test/produtos/sugestao')
@@ -127,7 +153,7 @@ describe('ProdutoService', () => {
 
     expect(emissoes).toEqual([null]);
 
-    codigo$.next('OK');
+    entrada$.next({ codigo: 'OK', categoria: '' });
     vi.advanceTimersByTime(600);
     const segundaReq = http.expectOne('http://estoque.test/produtos/sugestao');
     segundaReq.flush({ codigo: 'OK', descricao_sugerida: 'Produto OK', produtos_similares: [] });

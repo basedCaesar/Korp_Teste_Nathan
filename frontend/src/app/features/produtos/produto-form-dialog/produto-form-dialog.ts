@@ -1,6 +1,7 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -25,6 +26,7 @@ export interface ProdutoFormDialogData {
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
+    MatAutocompleteModule,
     MatButtonModule,
     MatIconModule,
     MatChipsModule,
@@ -33,7 +35,7 @@ export interface ProdutoFormDialogData {
   templateUrl: './produto-form-dialog.html',
   styleUrl: './produto-form-dialog.scss',
 })
-export class ProdutoFormDialog {
+export class ProdutoFormDialog implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<ProdutoFormDialog>);
   private readonly produtoService = inject(ProdutoService);
   private readonly notificacao = inject(NotificacaoService);
@@ -43,8 +45,9 @@ export class ProdutoFormDialog {
   protected readonly salvando = signal(false);
   protected readonly sugerindo = signal(false);
   protected readonly similares = signal<SugestaoProduto['produtos_similares']>([]);
+  protected readonly categoriasExistentes = signal<string[]>([]);
 
-  private readonly codigoDigitado$ = new Subject<string>();
+  private readonly entradaDigitada$ = new Subject<{ codigo: string; categoria: string }>();
 
   protected readonly form = new FormGroup({
     codigo: new FormControl(
@@ -59,12 +62,22 @@ export class ProdutoFormDialog {
       nonNullable: true,
       validators: [Validators.required, Validators.min(0)],
     }),
+    categoria: new FormControl(this.data.produto?.categoria ?? '', { nonNullable: true }),
   });
+
+  ngOnInit(): void {
+    if (!this.editando) {
+      this.produtoService.listar().subscribe((produtos) => {
+        const categorias = new Set(produtos.map((p) => p.categoria).filter((c) => c));
+        this.categoriasExistentes.set([...categorias]);
+      });
+    }
+  }
 
   constructor() {
     if (!this.editando) {
       this.produtoService
-        .sugestaoAoDigitar(this.codigoDigitado$)
+        .sugestaoAoDigitar(this.entradaDigitada$)
         .pipe(takeUntilDestroyed())
         .subscribe((sugestao) => {
           this.sugerindo.set(false);
@@ -79,12 +92,26 @@ export class ProdutoFormDialog {
     }
   }
 
-  protected aoDigitarCodigo(codigo: string): void {
-    if (this.editando || !codigo.trim()) {
+  protected categoriasFiltradas(): string[] {
+    const termo = this.form.controls.categoria.value.toLowerCase();
+    return this.categoriasExistentes().filter((categoria) =>
+      categoria.toLowerCase().includes(termo),
+    );
+  }
+
+  protected aoMudarCodigoOuCategoria(): void {
+    if (this.editando) {
+      return;
+    }
+    const codigo = this.form.controls.codigo.value.trim();
+    if (!codigo) {
       return;
     }
     this.sugerindo.set(true);
-    this.codigoDigitado$.next(codigo.trim());
+    this.entradaDigitada$.next({
+      codigo,
+      categoria: this.form.controls.categoria.value.trim(),
+    });
   }
 
   protected salvar(): void {
@@ -100,11 +127,13 @@ export class ProdutoFormDialog {
       ? this.produtoService.atualizar(this.data.produto!.id, {
           descricao: valor.descricao,
           saldo: valor.saldo,
+          categoria: valor.categoria,
         })
       : this.produtoService.criar({
           codigo: valor.codigo,
           descricao: valor.descricao,
           saldo: valor.saldo,
+          categoria: valor.categoria,
         });
 
     requisicao.pipe(finalize(() => this.salvando.set(false))).subscribe({

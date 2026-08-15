@@ -13,6 +13,7 @@ type Produto struct {
 	Codigo    string    `json:"codigo"`
 	Descricao string    `json:"descricao"`
 	Saldo     int       `json:"saldo"`
+	Categoria string    `json:"categoria"`
 	Version   int       `json:"version"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

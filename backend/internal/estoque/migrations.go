@@ -20,6 +20,15 @@ const migrationIndexProdutosUserID = `
 CREATE INDEX IF NOT EXISTS idx_produtos_user_id ON produtos(user_id);
 `
 
+const migrationAddProdutosCategoria = `
+ALTER TABLE produtos ADD COLUMN IF NOT EXISTS categoria TEXT;
+`
+
 // Migrations lista, em ordem, os statements idempotentes do dominio estoque.
 // Rodam no boot do servico (ver cmd/estoque/main.go), sem ferramenta externa.
-var Migrations = []string{migrationCreateProdutos, migrationAddProdutosUserID, migrationIndexProdutosUserID}
+var Migrations = []string{
+	migrationCreateProdutos,
+	migrationAddProdutosUserID,
+	migrationIndexProdutosUserID,
+	migrationAddProdutosCategoria,
+}

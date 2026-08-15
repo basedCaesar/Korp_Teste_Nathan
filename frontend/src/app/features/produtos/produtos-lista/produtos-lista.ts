@@ -22,7 +22,7 @@ export class ProdutosLista implements OnInit {
   private readonly notificacao = inject(NotificacaoService);
   private readonly dialog = inject(MatDialog);
 
-  protected readonly colunas = ['codigo', 'descricao', 'saldo', 'acoes'];
+  protected readonly colunas = ['codigo', 'descricao', 'saldo', 'categoria', 'acoes'];
   protected readonly produtos = signal<Produto[]>([]);
   protected readonly carregando = signal(false);
 

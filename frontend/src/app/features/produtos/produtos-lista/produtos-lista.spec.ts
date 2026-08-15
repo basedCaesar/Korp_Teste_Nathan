@@ -12,8 +12,8 @@ import { ProdutosLista } from './produtos-lista';
 // o fluxo de exclusão (confirmação + chamada ao service).
 describe('ProdutosLista', () => {
   const produtos: Produto[] = [
-    { id: 1, codigo: 'P001', descricao: 'Parafuso', saldo: 10, version: 0, created_at: '', updated_at: '' },
-    { id: 2, codigo: 'P002', descricao: 'Porca', saldo: 3, version: 0, created_at: '', updated_at: '' },
+    { id: 1, codigo: 'P001', descricao: 'Parafuso', saldo: 10, categoria: '', version: 0, created_at: '', updated_at: '' },
+    { id: 2, codigo: 'P002', descricao: 'Porca', saldo: 3, categoria: '', version: 0, created_at: '', updated_at: '' },
   ];
 
   let produtoServiceMock: {
