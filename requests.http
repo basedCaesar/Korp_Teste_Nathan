@@ -1,0 +1,203 @@
+@estoque = http://localhost:8082
+@faturamento = http://localhost:8083
+@auth = http://localhost:8081
+
+### ==================== HEALTH ====================
+
+### estoque health
+GET {{estoque}}/health
+
+### faturamento health
+GET {{faturamento}}/health
+
+### auth health
+GET {{auth}}/health
+
+
+### ==================== ESTOQUE: PRODUTOS ====================
+
+### criar produto
+POST {{estoque}}/produtos
+Content-Type: application/json
+
+{
+  "codigo": "P001",
+  "descricao": "Parafuso sextavado",
+  "saldo": 100
+}
+
+### criar produto com codigo duplicado (espera 409 CODIGO_DUPLICADO)
+POST {{estoque}}/produtos
+Content-Type: application/json
+
+{
+  "codigo": "P001",
+  "descricao": "Duplicado",
+  "saldo": 10
+}
+
+### criar produto invalido (espera 400 VALIDACAO)
+POST {{estoque}}/produtos
+Content-Type: application/json
+
+{
+  "codigo": "",
+  "saldo": -1
+}
+
+### listar produtos
+GET {{estoque}}/produtos
+
+### buscar produto por id
+GET {{estoque}}/produtos/1
+
+### buscar produto inexistente (espera 404)
+GET {{estoque}}/produtos/999999
+
+### atualizar produto
+PUT {{estoque}}/produtos/1
+Content-Type: application/json
+
+{
+  "descricao": "Parafuso sextavado grande",
+  "saldo": 150
+}
+
+### excluir produto
+DELETE {{estoque}}/produtos/1
+
+
+### ==================== FATURAMENTO: NOTAS ====================
+
+### criar nota (numero sequencial, status ABERTA)
+POST {{faturamento}}/notas
+
+### listar notas
+GET {{faturamento}}/notas
+
+### buscar nota por id (com itens)
+GET {{faturamento}}/notas/1
+
+### buscar nota inexistente (espera 404)
+GET {{faturamento}}/notas/999999
+
+### adicionar item na nota
+POST {{faturamento}}/notas/1/itens
+Content-Type: application/json
+
+{
+  "produto_id": 1,
+  "produto_codigo": "P001",
+  "produto_descricao": "Parafuso sextavado",
+  "quantidade": 5
+}
+
+### adicionar item com quantidade invalida (espera 400)
+POST {{faturamento}}/notas/1/itens
+Content-Type: application/json
+
+{
+  "produto_id": 1,
+  "produto_codigo": "P001",
+  "produto_descricao": "Parafuso sextavado",
+  "quantidade": 0
+}
+
+### atualizar quantidade do item
+PUT {{faturamento}}/notas/1/itens/1
+Content-Type: application/json
+
+{
+  "quantidade": 8
+}
+
+### remover item da nota
+DELETE {{faturamento}}/notas/1/itens/1
+
+### excluir nota (so permitido se ABERTA)
+DELETE {{faturamento}}/notas/1
+
+
+### ==================== FATURAMENTO: IMPRESSAO ====================
+
+### imprimir nota sem Idempotency-Key (espera 400)
+POST {{faturamento}}/notas/1/imprimir
+
+### imprimir nota (header obrigatorio)
+POST {{faturamento}}/notas/1/imprimir
+Idempotency-Key: exemplo-chave-unica-001
+
+### repetir a mesma impressao com a MESMA key (deve devolver a resposta cacheada, sem reprocessar)
+POST {{faturamento}}/notas/1/imprimir
+Idempotency-Key: exemplo-chave-unica-001
+
+### imprimir nota ja FECHADA com key nova (espera 409 NOTA_NAO_ABERTA)
+POST {{faturamento}}/notas/1/imprimir
+Idempotency-Key: exemplo-chave-unica-002
+
+
+### ==================== AUTH ====================
+
+### cadastro
+POST {{auth}}/auth/cadastro
+Content-Type: application/json
+
+{
+  "email": "teste@teste.com",
+  "senha": "senha123"
+}
+
+### cadastro duplicado (espera 409 EMAIL_JA_CADASTRADO)
+POST {{auth}}/auth/cadastro
+Content-Type: application/json
+
+{
+  "email": "teste@teste.com",
+  "senha": "senha123"
+}
+
+### cadastro com dados invalidos (espera 400)
+POST {{auth}}/auth/cadastro
+Content-Type: application/json
+
+{
+  "email": "nao-e-email",
+  "senha": "123"
+}
+
+### login antes de verificar o email (espera 403 EMAIL_NAO_VERIFICADO)
+POST {{auth}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "teste@teste.com",
+  "senha": "senha123"
+}
+
+### verificar email — pegue o token no MailHog (http://localhost:8025), cole abaixo
+GET {{auth}}/auth/verificar?token=COLE_O_TOKEN_AQUI
+
+### login apos verificar
+POST {{auth}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "teste@teste.com",
+  "senha": "senha123"
+}
+
+### login com senha errada (espera 401)
+POST {{auth}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "teste@teste.com",
+  "senha": "errada"
+}
+
+### /auth/me sem token (espera 401)
+GET {{auth}}/auth/me
+
+### /auth/me com token — cole o token retornado pelo login acima
+GET {{auth}}/auth/me
+Authorization: Bearer COLE_O_JWT_AQUI
