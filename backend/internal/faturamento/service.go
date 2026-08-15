@@ -3,6 +3,7 @@ package faturamento
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 type Service struct {
@@ -105,6 +106,15 @@ func (s *Service) Imprimir(ctx context.Context, requestID string, notaID, userID
 	}
 
 	assunto := "Nota fiscal emitida"
-	corpo := fmt.Sprintf("A nota fiscal #%d foi emitida com sucesso.", notaID)
+	corpo := montarCorpoEmailNota(notaID, itens)
 	return s.repo.FecharNotaComOutbox(ctx, notaID, s.notificacaoEmail, assunto, corpo)
+}
+
+func montarCorpoEmailNota(notaID int64, itens []Item) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "A nota fiscal #%d foi emitida com sucesso.\n\nItens:\n", notaID)
+	for _, item := range itens {
+		fmt.Fprintf(&b, "- %s — %s x%d\n", item.ProdutoCodigo, item.ProdutoDescricao, item.Quantidade)
+	}
+	return b.String()
 }
