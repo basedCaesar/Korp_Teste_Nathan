@@ -72,6 +72,7 @@ func main() {
 	r := gin.New()
 	r.Use(httpx.Recovery())
 	r.Use(httpx.RequestIDMiddleware())
+	r.Use(httpx.CORS())
 	httpx.RegisterHealth(r, "faturamento")
 	faturamento.RegisterRoutes(r, svc, idemStore)
 

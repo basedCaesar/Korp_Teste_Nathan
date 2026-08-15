@@ -66,6 +66,7 @@ func main() {
 	r := gin.New()
 	r.Use(httpx.Recovery())
 	r.Use(httpx.RequestIDMiddleware())
+	r.Use(httpx.CORS())
 	httpx.RegisterHealth(r, "auth")
 	auth.RegisterRoutes(r, svc, jwtSecret)
 
