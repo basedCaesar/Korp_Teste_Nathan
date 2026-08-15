@@ -1,0 +1,89 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: korp
+      POSTGRES_PASSWORD: korp
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U korp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "8025:8025" # UI
+      - "1025:1025" # SMTP
+
+  estoque:
+    build:
+      context: .
+      dockerfile: build/Dockerfile
+      args:
+        SERVICE: estoque
+    environment:
+      PORT: "8082"
+      DATABASE_URL: postgres://korp:korp@postgres:5432/estoque_db?sslmode=disable
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  faturamento:
+    build:
+      context: .
+      dockerfile: build/Dockerfile
+      args:
+        SERVICE: faturamento
+    environment:
+      PORT: "8083"
+      DATABASE_URL: postgres://korp:korp@postgres:5432/faturamento_db?sslmode=disable
+      ESTOQUE_URL: http://estoque:8082
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8083/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  auth:
+    build:
+      context: .
+      dockerfile: build/Dockerfile
+      args:
+        SERVICE: auth
+    environment:
+      PORT: "8081"
+      DATABASE_URL: postgres://korp:korp@postgres:5432/auth_db?sslmode=disable
+      SMTP_HOST: mailhog
+      SMTP_PORT: "1025"
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
