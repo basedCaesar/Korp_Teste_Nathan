@@ -65,19 +65,16 @@ export class ProdutoFormDialog {
     if (!this.editando) {
       this.produtoService
         .sugestaoAoDigitar(this.codigoDigitado$)
-        .pipe(
-          takeUntilDestroyed(),
-          finalize(() => this.sugerindo.set(false)),
-        )
-        .subscribe({
-          next: (sugestao) => {
-            this.sugerindo.set(false);
-            if (!this.form.controls.descricao.value) {
-              this.form.controls.descricao.setValue(sugestao.descricao_sugerida);
-            }
-            this.similares.set(sugestao.produtos_similares);
-          },
-          error: () => this.sugerindo.set(false),
+        .pipe(takeUntilDestroyed())
+        .subscribe((sugestao) => {
+          this.sugerindo.set(false);
+          if (!sugestao) {
+            return;
+          }
+          if (!this.form.controls.descricao.value) {
+            this.form.controls.descricao.setValue(sugestao.descricao_sugerida);
+          }
+          this.similares.set(sugestao.produtos_similares);
         });
     }
   }

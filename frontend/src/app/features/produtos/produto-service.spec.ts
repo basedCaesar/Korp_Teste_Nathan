@@ -108,4 +108,32 @@ describe('ProdutoService', () => {
     expect(emissoes.length).toBe(1);
     vi.useRealTimers();
   });
+
+  it('sugestaoAoDigitar sobrevive a uma falha e ainda responde ao proximo codigo digitado', () => {
+    vi.useFakeTimers();
+    const codigo$ = new Subject<string>();
+    const emissoes: unknown[] = [];
+
+    service.sugestaoAoDigitar(codigo$).subscribe((valor) => emissoes.push(valor));
+
+    codigo$.next('FALHA');
+    vi.advanceTimersByTime(600);
+    http
+      .expectOne('http://estoque.test/produtos/sugestao')
+      .flush(
+        { code: 'IA_INDISPONIVEL', message: 'servico de IA indisponivel', details: [], trace_id: '' },
+        { status: 503, statusText: 'Service Unavailable' },
+      );
+
+    expect(emissoes).toEqual([null]);
+
+    codigo$.next('OK');
+    vi.advanceTimersByTime(600);
+    const segundaReq = http.expectOne('http://estoque.test/produtos/sugestao');
+    segundaReq.flush({ codigo: 'OK', descricao_sugerida: 'Produto OK', produtos_similares: [] });
+
+    expect(emissoes.length).toBe(2);
+    expect((emissoes[1] as { descricao_sugerida: string }).descricao_sugerida).toBe('Produto OK');
+    vi.useRealTimers();
+  });
 });

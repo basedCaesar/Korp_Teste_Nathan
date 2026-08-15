@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
+import { Observable, catchError, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 
 import { ConfigService } from '../../core/config/config-service';
 import { Produto, ProdutoInput, ProdutoUpdateInput, SugestaoProduto } from '../../core/models/produto';
@@ -38,11 +38,11 @@ export class ProdutoService {
     return this.http.post<SugestaoProduto>(`${this.baseUrl}/sugestao`, { codigo });
   }
 
-  sugestaoAoDigitar(codigo$: Observable<string>): Observable<SugestaoProduto> {
+  sugestaoAoDigitar(codigo$: Observable<string>): Observable<SugestaoProduto | null> {
     return codigo$.pipe(
       debounceTime(600),
       distinctUntilChanged(),
-      switchMap((codigo) => this.sugerir(codigo)),
+      switchMap((codigo) => this.sugerir(codigo).pipe(catchError(() => of(null)))),
     );
   }
 }
