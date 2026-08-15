@@ -24,6 +24,8 @@ func RegisterRoutes(r *gin.Engine, svc *Service) {
 	g.GET("/:id", h.buscar)
 	g.PUT("/:id", h.atualizar)
 	g.DELETE("/:id", h.excluir)
+
+	r.POST("/estoque/baixas", h.baixar)
 }
 
 func (h *Handler) criar(c *gin.Context) {
@@ -92,6 +94,23 @@ func (h *Handler) excluir(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (h *Handler) baixar(c *gin.Context) {
+	var req BaixarRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.RespondValidationError(c, err)
+		return
+	}
+	itens := make([]ItemBaixa, len(req.Itens))
+	for i, item := range req.Itens {
+		itens[i] = ItemBaixa{ProdutoID: item.ProdutoID, Quantidade: item.Quantidade}
+	}
+	if err := h.svc.BaixarItens(c.Request.Context(), itens); err != nil {
+		h.responderErro(c, err)
+		return
+	}
+	c.Status(http.StatusOK)
+}
+
 func parseID(c *gin.Context) (int64, bool) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -108,6 +127,10 @@ func (h *Handler) responderErro(c *gin.Context, err error) {
 		httpx.RespondError(c, http.StatusNotFound, "PRODUTO_NAO_ENCONTRADO", err.Error())
 	case errors.Is(err, ErrCodigoDuplicado):
 		httpx.RespondError(c, http.StatusConflict, "CODIGO_DUPLICADO", err.Error())
+	case errors.Is(err, ErrSaldoInsuficiente):
+		httpx.RespondError(c, http.StatusConflict, "SALDO_INSUFICIENTE", err.Error())
+	case errors.Is(err, ErrConflitoVersao):
+		httpx.RespondError(c, http.StatusConflict, "CONFLITO_VERSAO", err.Error())
 	default:
 		slog.Error("erro inesperado no dominio estoque", "error", err)
 		httpx.RespondError(c, http.StatusInternalServerError, "ERRO_INTERNO", "erro interno do servidor")

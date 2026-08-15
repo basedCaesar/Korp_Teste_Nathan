@@ -25,6 +25,7 @@ func RegisterRoutes(r *gin.Engine, svc *Service) {
 	g.POST("/:id/itens", h.adicionarItem)
 	g.PUT("/:id/itens/:itemId", h.atualizarItem)
 	g.DELETE("/:id/itens/:itemId", h.removerItem)
+	g.POST("/:id/imprimir", h.imprimir)
 }
 
 func (h *Handler) criar(c *gin.Context) {
@@ -126,6 +127,22 @@ func (h *Handler) removerItem(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (h *Handler) imprimir(c *gin.Context) {
+	notaID, ok := parseIDParam(c, "id")
+	if !ok {
+		return
+	}
+	if c.GetHeader("Idempotency-Key") == "" {
+		httpx.RespondError(c, http.StatusBadRequest, "IDEMPOTENCY_KEY_OBRIGATORIA", "header Idempotency-Key e obrigatorio")
+		return
+	}
+	if err := h.svc.Imprimir(c.Request.Context(), httpx.RequestID(c), notaID); err != nil {
+		h.responderErro(c, err)
+		return
+	}
+	c.Status(http.StatusOK)
+}
+
 func parseIDParam(c *gin.Context, nome string) (int64, bool) {
 	id, err := strconv.ParseInt(c.Param(nome), 10, 64)
 	if err != nil {
@@ -143,6 +160,10 @@ func (h *Handler) responderErro(c *gin.Context, err error) {
 		httpx.RespondError(c, http.StatusNotFound, "ITEM_NAO_ENCONTRADO", err.Error())
 	case errors.Is(err, ErrNotaNaoAberta):
 		httpx.RespondError(c, http.StatusConflict, "NOTA_NAO_ABERTA", err.Error())
+	case errors.Is(err, ErrSaldoInsuficiente):
+		httpx.RespondError(c, http.StatusConflict, "SALDO_INSUFICIENTE", err.Error())
+	case errors.Is(err, ErrEstoqueIndisponivel):
+		httpx.RespondError(c, http.StatusServiceUnavailable, "ESTOQUE_INDISPONIVEL", err.Error())
 	default:
 		slog.Error("erro inesperado no dominio faturamento", "error", err)
 		httpx.RespondError(c, http.StatusInternalServerError, "ERRO_INTERNO", "erro interno do servidor")

@@ -40,6 +40,16 @@ const (
 
 	sqlExcluirItem = `
 		DELETE FROM itens_nota WHERE id = $1 AND nota_id = $2`
+
+	sqlMarcarProcessando = `
+		UPDATE notas SET status = 'PROCESSANDO', updated_at = now()
+		WHERE id = $1 AND status = 'ABERTA'`
+
+	sqlMarcarAberta = `
+		UPDATE notas SET status = 'ABERTA', updated_at = now() WHERE id = $1`
+
+	sqlMarcarFechada = `
+		UPDATE notas SET status = 'FECHADA', updated_at = now() WHERE id = $1`
 )
 
 type Repository struct {
@@ -146,4 +156,28 @@ func (r *Repository) RemoverItem(ctx context.Context, notaID, itemID int64) erro
 		return ErrItemNaoEncontrado
 	}
 	return nil
+}
+
+func (r *Repository) MarcarProcessando(ctx context.Context, id int64) error {
+	tag, err := r.pool.Exec(ctx, sqlMarcarProcessando, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 1 {
+		return nil
+	}
+	if _, err := r.BuscarNota(ctx, id); err != nil {
+		return err
+	}
+	return ErrNotaNaoAberta
+}
+
+func (r *Repository) MarcarAberta(ctx context.Context, id int64) error {
+	_, err := r.pool.Exec(ctx, sqlMarcarAberta, id)
+	return err
+}
+
+func (r *Repository) MarcarFechada(ctx context.Context, id int64) error {
+	_, err := r.pool.Exec(ctx, sqlMarcarFechada, id)
+	return err
 }

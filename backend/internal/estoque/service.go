@@ -31,3 +31,7 @@ func (s *Service) Atualizar(ctx context.Context, id int64, descricao string, sal
 func (s *Service) Excluir(ctx context.Context, id int64) error {
 	return s.repo.Excluir(ctx, id)
 }
+
+func (s *Service) BaixarItens(ctx context.Context, itens []ItemBaixa) error {
+	return s.repo.BaixarItens(ctx, itens)
+}

@@ -12,3 +12,12 @@ type AtualizarProdutoRequest struct {
 	Descricao string `json:"descricao" binding:"required"`
 	Saldo     int    `json:"saldo" binding:"gte=0"`
 }
+
+type BaixarRequest struct {
+	Itens []ItemBaixaRequest `json:"itens" binding:"required,min=1,dive"`
+}
+
+type ItemBaixaRequest struct {
+	ProdutoID  int64 `json:"produto_id" binding:"required"`
+	Quantidade int   `json:"quantidade" binding:"required,gt=0"`
+}

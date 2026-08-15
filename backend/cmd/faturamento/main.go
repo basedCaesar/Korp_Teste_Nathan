@@ -25,6 +25,11 @@ func main() {
 		slog.Error("DATABASE_URL nao configurada")
 		os.Exit(1)
 	}
+	estoqueURL := os.Getenv("ESTOQUE_URL")
+	if estoqueURL == "" {
+		slog.Error("ESTOQUE_URL nao configurada")
+		os.Exit(1)
+	}
 
 	ctx := context.Background()
 	pool, err := db.NewPool(ctx, databaseURL)
@@ -40,7 +45,8 @@ func main() {
 	}
 
 	repo := faturamento.NewRepository(pool)
-	svc := faturamento.NewService(repo)
+	estoqueClient := faturamento.NewEstoqueClient(estoqueURL)
+	svc := faturamento.NewService(repo, estoqueClient)
 
 	r := gin.New()
 	r.Use(httpx.Recovery())

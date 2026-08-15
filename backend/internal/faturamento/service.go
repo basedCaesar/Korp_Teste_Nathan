@@ -3,11 +3,12 @@ package faturamento
 import "context"
 
 type Service struct {
-	repo *Repository
+	repo          *Repository
+	estoqueClient *EstoqueClient
 }
 
-func NewService(repo *Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo *Repository, estoqueClient *EstoqueClient) *Service {
+	return &Service{repo: repo, estoqueClient: estoqueClient}
 }
 
 func (s *Service) Criar(ctx context.Context) (Nota, error) {
@@ -73,4 +74,28 @@ func (s *Service) RemoverItem(ctx context.Context, notaID, itemID int64) error {
 		return ErrNotaNaoAberta
 	}
 	return s.repo.RemoverItem(ctx, notaID, itemID)
+}
+
+func (s *Service) Imprimir(ctx context.Context, requestID string, notaID int64) error {
+	if err := s.repo.MarcarProcessando(ctx, notaID); err != nil {
+		return err
+	}
+
+	itens, err := s.repo.ListarItens(ctx, notaID)
+	if err != nil {
+		_ = s.repo.MarcarAberta(ctx, notaID)
+		return err
+	}
+
+	payload := make([]ItemBaixaPayload, len(itens))
+	for i, item := range itens {
+		payload[i] = ItemBaixaPayload{ProdutoID: item.ProdutoID, Quantidade: item.Quantidade}
+	}
+
+	if err := s.estoqueClient.Baixar(ctx, requestID, payload); err != nil {
+		_ = s.repo.MarcarAberta(ctx, notaID)
+		return err
+	}
+
+	return s.repo.MarcarFechada(ctx, notaID)
 }

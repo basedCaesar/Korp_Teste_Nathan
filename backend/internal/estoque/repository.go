@@ -3,6 +3,7 @@ package estoque
 import (
 	"context"
 	"errors"
+	"sort"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -31,7 +32,18 @@ const (
 		RETURNING id, codigo, descricao, saldo, version, created_at, updated_at`
 
 	sqlExcluirProduto = `DELETE FROM produtos WHERE id = $1`
+
+	sqlBaixarProduto = `
+		UPDATE produtos SET saldo = saldo - $2, version = version + 1, updated_at = now()
+		WHERE id = $1 AND version = $3 AND saldo >= $2`
 )
+
+const maxTentativasBaixa = 3
+
+type dbtx interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
 
 const pgErrCodeUniqueViolation = "23505"
 
@@ -62,13 +74,17 @@ func (r *Repository) Criar(ctx context.Context, codigo, descricao string, saldo 
 	return p, nil
 }
 
-func (r *Repository) BuscarPorID(ctx context.Context, id int64) (Produto, error) {
-	row := r.pool.QueryRow(ctx, sqlBuscarProduto, id)
+func buscarProduto(ctx context.Context, db dbtx, id int64) (Produto, error) {
+	row := db.QueryRow(ctx, sqlBuscarProduto, id)
 	p, err := scanProduto(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Produto{}, ErrProdutoNaoEncontrado
 	}
 	return p, err
+}
+
+func (r *Repository) BuscarPorID(ctx context.Context, id int64) (Produto, error) {
+	return buscarProduto(ctx, r.pool, id)
 }
 
 func (r *Repository) Listar(ctx context.Context) ([]Produto, error) {
@@ -107,4 +123,47 @@ func (r *Repository) Excluir(ctx context.Context, id int64) error {
 		return ErrProdutoNaoEncontrado
 	}
 	return nil
+}
+
+func baixarProduto(ctx context.Context, db dbtx, produtoID int64, quantidade int) error {
+	produto, err := buscarProduto(ctx, db, produtoID)
+	if err != nil {
+		return err
+	}
+	for tentativa := 1; tentativa <= maxTentativasBaixa; tentativa++ {
+		tag, err := db.Exec(ctx, sqlBaixarProduto, produtoID, quantidade, produto.Version)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 1 {
+			return nil
+		}
+		produto, err = buscarProduto(ctx, db, produtoID)
+		if err != nil {
+			return err
+		}
+		if produto.Saldo < quantidade {
+			return ErrSaldoInsuficiente
+		}
+	}
+	return ErrConflitoVersao
+}
+
+func (r *Repository) BaixarItens(ctx context.Context, itens []ItemBaixa) error {
+	ordenados := make([]ItemBaixa, len(itens))
+	copy(ordenados, itens)
+	sort.Slice(ordenados, func(i, j int) bool { return ordenados[i].ProdutoID < ordenados[j].ProdutoID })
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	for _, item := range ordenados {
+		if err := baixarProduto(ctx, tx, item.ProdutoID, item.Quantidade); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
 }
