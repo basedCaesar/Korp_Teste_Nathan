@@ -48,6 +48,8 @@ func main() {
 	estoqueClient := faturamento.NewEstoqueClient(estoqueURL)
 	svc := faturamento.NewService(repo, estoqueClient)
 
+	go faturamento.RunReaper(ctx, repo)
+
 	r := gin.New()
 	r.Use(httpx.Recovery())
 	r.Use(httpx.RequestIDMiddleware())

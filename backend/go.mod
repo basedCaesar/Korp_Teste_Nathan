@@ -6,6 +6,7 @@ require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-playground/validator/v10 v10.20.0
 	github.com/jackc/pgx/v5 v5.10.0
+	github.com/sony/gobreaker v1.0.0
 )
 
 require (

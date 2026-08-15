@@ -3,6 +3,7 @@ package faturamento
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -50,6 +51,10 @@ const (
 
 	sqlMarcarFechada = `
 		UPDATE notas SET status = 'FECHADA', updated_at = now() WHERE id = $1`
+
+	sqlReabrirNotasTravadas = `
+		UPDATE notas SET status = 'ABERTA', updated_at = now()
+		WHERE status = 'PROCESSANDO' AND updated_at < now() - make_interval(secs => $1)`
 )
 
 type Repository struct {
@@ -180,4 +185,12 @@ func (r *Repository) MarcarAberta(ctx context.Context, id int64) error {
 func (r *Repository) MarcarFechada(ctx context.Context, id int64) error {
 	_, err := r.pool.Exec(ctx, sqlMarcarFechada, id)
 	return err
+}
+
+func (r *Repository) ReabrirNotasTravadas(ctx context.Context, limite time.Duration) (int64, error) {
+	tag, err := r.pool.Exec(ctx, sqlReabrirNotasTravadas, limite.Seconds())
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
 }
