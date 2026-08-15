@@ -63,11 +63,11 @@ fi
 
 echo "Criando produtos..."
 P1=$(curl -s -X POST "$ESTOQUE_URL/produtos" "${auth[@]}" -H "Content-Type: application/json" \
-  -d '{"codigo":"SEED-001","descricao":"Teclado mecanico","saldo":50}' | extrair_id)
+  -d '{"codigo":"SEED-001","descricao":"Teclado mecanico","saldo":50,"categoria":"Perifericos"}' | extrair_id)
 P2=$(curl -s -X POST "$ESTOQUE_URL/produtos" "${auth[@]}" -H "Content-Type: application/json" \
-  -d '{"codigo":"SEED-002","descricao":"Mouse sem fio","saldo":30}' | extrair_id)
+  -d '{"codigo":"SEED-002","descricao":"Mouse sem fio","saldo":30,"categoria":"Perifericos"}' | extrair_id)
 P3=$(curl -s -X POST "$ESTOQUE_URL/produtos" "${auth[@]}" -H "Content-Type: application/json" \
-  -d '{"codigo":"SEED-003","descricao":"Monitor 27 polegadas","saldo":15}' | extrair_id)
+  -d '{"codigo":"SEED-003","descricao":"Monitor 27 polegadas","saldo":15,"categoria":"Monitores"}' | extrair_id)
 echo "  produtos: $P1 $P2 $P3"
 
 echo "Criando nota fechada (com impressao)..."
