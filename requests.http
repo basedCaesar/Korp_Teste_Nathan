@@ -14,150 +14,7 @@ GET {{faturamento}}/health
 GET {{auth}}/health
 
 
-### ==================== ESTOQUE: PRODUTOS ====================
-
-### criar produto
-POST {{estoque}}/produtos
-Content-Type: application/json
-
-{
-  "codigo": "P001",
-  "descricao": "Parafuso sextavado",
-  "saldo": 100
-}
-
-### criar produto com codigo duplicado (espera 409 CODIGO_DUPLICADO)
-POST {{estoque}}/produtos
-Content-Type: application/json
-
-{
-  "codigo": "P001",
-  "descricao": "Duplicado",
-  "saldo": 10
-}
-
-### criar produto invalido (espera 400 VALIDACAO)
-POST {{estoque}}/produtos
-Content-Type: application/json
-
-{
-  "codigo": "",
-  "saldo": -1
-}
-
-### listar produtos
-GET {{estoque}}/produtos
-
-### buscar produto por id
-GET {{estoque}}/produtos/1
-
-### buscar produto inexistente (espera 404)
-GET {{estoque}}/produtos/999999
-
-### atualizar produto
-PUT {{estoque}}/produtos/1
-Content-Type: application/json
-
-{
-  "descricao": "Parafuso sextavado grande",
-  "saldo": 150
-}
-
-### excluir produto
-DELETE {{estoque}}/produtos/1
-
-
-### ==================== ESTOQUE: SUGESTAO VIA IA (esticao opcional) ====================
-### Depende de GEMINI_API_KEY configurada no .env (nao commitado). Sem a chave, devolve 503
-### IA_INDISPONIVEL de forma graciosa em vez de derrubar o servico.
-
-### sugerir descricao + produtos similares pra um codigo novo
-POST {{estoque}}/produtos/sugestao
-Content-Type: application/json
-
-{
-  "codigo": "TEC-045"
-}
-
-### sugestao sem informar codigo (espera 400 VALIDACAO)
-POST {{estoque}}/produtos/sugestao
-Content-Type: application/json
-
-{
-  "codigo": ""
-}
-
-
-### ==================== FATURAMENTO: NOTAS ====================
-
-### criar nota (numero sequencial, status ABERTA)
-POST {{faturamento}}/notas
-
-### listar notas
-GET {{faturamento}}/notas
-
-### buscar nota por id (com itens)
-GET {{faturamento}}/notas/1
-
-### buscar nota inexistente (espera 404)
-GET {{faturamento}}/notas/999999
-
-### adicionar item na nota
-POST {{faturamento}}/notas/1/itens
-Content-Type: application/json
-
-{
-  "produto_id": 1,
-  "produto_codigo": "P001",
-  "produto_descricao": "Parafuso sextavado",
-  "quantidade": 5
-}
-
-### adicionar item com quantidade invalida (espera 400)
-POST {{faturamento}}/notas/1/itens
-Content-Type: application/json
-
-{
-  "produto_id": 1,
-  "produto_codigo": "P001",
-  "produto_descricao": "Parafuso sextavado",
-  "quantidade": 0
-}
-
-### atualizar quantidade do item
-PUT {{faturamento}}/notas/1/itens/1
-Content-Type: application/json
-
-{
-  "quantidade": 8
-}
-
-### remover item da nota
-DELETE {{faturamento}}/notas/1/itens/1
-
-### excluir nota (so permitido se ABERTA)
-DELETE {{faturamento}}/notas/1
-
-
-### ==================== FATURAMENTO: IMPRESSAO ====================
-
-### imprimir nota sem Idempotency-Key (espera 400)
-POST {{faturamento}}/notas/1/imprimir
-
-### imprimir nota (header obrigatorio)
-POST {{faturamento}}/notas/1/imprimir
-Idempotency-Key: exemplo-chave-unica-001
-
-### repetir a mesma impressao com a MESMA key (deve devolver a resposta cacheada, sem reprocessar)
-POST {{faturamento}}/notas/1/imprimir
-Idempotency-Key: exemplo-chave-unica-001
-
-### imprimir nota ja FECHADA com key nova (espera 409 NOTA_NAO_ABERTA)
-POST {{faturamento}}/notas/1/imprimir
-Idempotency-Key: exemplo-chave-unica-002
-
-
-### ==================== AUTH ====================
+### ==================== AUTH (rode isso primeiro — produtos/notas exigem token) ====================
 
 ### cadastro
 POST {{auth}}/auth/cadastro
@@ -198,7 +55,8 @@ Content-Type: application/json
 ### verificar email — pegue o token no MailHog (http://localhost:8025), cole abaixo
 GET {{auth}}/auth/verificar?token=COLE_O_TOKEN_AQUI
 
-### login apos verificar
+### login apos verificar — as requests de produtos/notas abaixo reusam o token desta resposta
+# @name login
 POST {{auth}}/auth/login
 Content-Type: application/json
 
@@ -219,6 +77,199 @@ Content-Type: application/json
 ### /auth/me sem token (espera 401)
 GET {{auth}}/auth/me
 
-### /auth/me com token — cole o token retornado pelo login acima
+### /auth/me com o token do login acima
 GET {{auth}}/auth/me
-Authorization: Bearer COLE_O_JWT_AQUI
+Authorization: Bearer {{login.response.body.$.token}}
+
+
+### ==================== ESTOQUE: PRODUTOS (exige Authorization — cada usuario so ve os proprios) ====================
+
+### criar produto
+# @name criarProduto
+POST {{estoque}}/produtos
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "codigo": "P001",
+  "descricao": "Parafuso sextavado",
+  "saldo": 100
+}
+
+### criar produto com codigo duplicado (espera 409 CODIGO_DUPLICADO)
+POST {{estoque}}/produtos
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "codigo": "P001",
+  "descricao": "Duplicado",
+  "saldo": 10
+}
+
+### criar produto invalido (espera 400 VALIDACAO)
+POST {{estoque}}/produtos
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "codigo": "",
+  "saldo": -1
+}
+
+### criar produto sem token (espera 401 TOKEN_AUSENTE)
+POST {{estoque}}/produtos
+Content-Type: application/json
+
+{
+  "codigo": "P999",
+  "descricao": "Sem token",
+  "saldo": 1
+}
+
+### listar produtos (so os do usuario logado)
+GET {{estoque}}/produtos
+Authorization: Bearer {{login.response.body.$.token}}
+
+### buscar produto por id (use o id devolvido em "criar produto" acima)
+GET {{estoque}}/produtos/{{criarProduto.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### buscar produto inexistente (espera 404 — tambem devolve 404 se o produto for de outro usuario)
+GET {{estoque}}/produtos/999999
+Authorization: Bearer {{login.response.body.$.token}}
+
+### atualizar produto
+PUT {{estoque}}/produtos/{{criarProduto.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "descricao": "Parafuso sextavado grande",
+  "saldo": 150
+}
+
+### excluir produto
+DELETE {{estoque}}/produtos/{{criarProduto.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+
+### ==================== ESTOQUE: SUGESTAO VIA IA (esticao opcional) ====================
+### Depende de GEMINI_API_KEY configurada no .env (nao commitado). Sem a chave, devolve 503
+### IA_INDISPONIVEL de forma graciosa em vez de derrubar o servico. Exige login igual as demais
+### rotas de /produtos, mas o catalogo consultado pela IA e' de todos os usuarios, nao so do
+### usuario logado (proposital — a sugestao usa o catalogo inteiro pra comparar produtos).
+
+### sugerir descricao + produtos similares pra um codigo novo
+POST {{estoque}}/produtos/sugestao
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "codigo": "TEC-045"
+}
+
+### sugestao sem informar codigo (espera 400 VALIDACAO)
+POST {{estoque}}/produtos/sugestao
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "codigo": ""
+}
+
+
+### ==================== FATURAMENTO: NOTAS (exige Authorization — cada usuario so ve as proprias) ====================
+
+### criar nota (numero sequencial, status ABERTA)
+# @name criarNota
+POST {{faturamento}}/notas
+Authorization: Bearer {{login.response.body.$.token}}
+
+### listar notas (so as do usuario logado)
+GET {{faturamento}}/notas
+Authorization: Bearer {{login.response.body.$.token}}
+
+### buscar nota por id (com itens)
+GET {{faturamento}}/notas/{{criarNota.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### buscar nota inexistente (espera 404 — tambem devolve 404 se a nota for de outro usuario)
+GET {{faturamento}}/notas/999999
+Authorization: Bearer {{login.response.body.$.token}}
+
+### adicionar item na nota (produto_id precisa ser de um produto do MESMO usuario, senao 400 PRODUTO_INVALIDO)
+# @name adicionarItem
+POST {{faturamento}}/notas/{{criarNota.response.body.$.id}}/itens
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "produto_id": 1,
+  "produto_codigo": "P001",
+  "produto_descricao": "Parafuso sextavado",
+  "quantidade": 5
+}
+
+### adicionar item com quantidade invalida (espera 400)
+POST {{faturamento}}/notas/{{criarNota.response.body.$.id}}/itens
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "produto_id": 1,
+  "produto_codigo": "P001",
+  "produto_descricao": "Parafuso sextavado",
+  "quantidade": 0
+}
+
+### adicionar item com produto que nao existe/nao e seu (espera 400 PRODUTO_INVALIDO)
+POST {{faturamento}}/notas/{{criarNota.response.body.$.id}}/itens
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "produto_id": 999999,
+  "produto_codigo": "X",
+  "produto_descricao": "Nao existe",
+  "quantidade": 1
+}
+
+### atualizar quantidade do item
+PUT {{faturamento}}/notas/{{criarNota.response.body.$.id}}/itens/{{adicionarItem.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "quantidade": 8
+}
+
+### remover item da nota
+DELETE {{faturamento}}/notas/{{criarNota.response.body.$.id}}/itens/{{adicionarItem.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### excluir nota (so permitido se ABERTA)
+DELETE {{faturamento}}/notas/{{criarNota.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+
+### ==================== FATURAMENTO: IMPRESSAO ====================
+
+### imprimir nota sem Idempotency-Key (espera 400)
+POST {{faturamento}}/notas/{{criarNota.response.body.$.id}}/imprimir
+Authorization: Bearer {{login.response.body.$.token}}
+
+### imprimir nota (header obrigatorio)
+POST {{faturamento}}/notas/{{criarNota.response.body.$.id}}/imprimir
+Authorization: Bearer {{login.response.body.$.token}}
+Idempotency-Key: exemplo-chave-unica-001
+
+### repetir a mesma impressao com a MESMA key (deve devolver a resposta cacheada, sem reprocessar)
+POST {{faturamento}}/notas/{{criarNota.response.body.$.id}}/imprimir
+Authorization: Bearer {{login.response.body.$.token}}
+Idempotency-Key: exemplo-chave-unica-001
+
+### imprimir nota ja FECHADA com key nova (espera 409 NOTA_NAO_ABERTA)
+POST {{faturamento}}/notas/{{criarNota.response.body.$.id}}/imprimir
+Authorization: Bearer {{login.response.body.$.token}}
+Idempotency-Key: exemplo-chave-unica-002
