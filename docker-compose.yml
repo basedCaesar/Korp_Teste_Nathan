@@ -74,6 +74,9 @@ services:
       DATABASE_URL: postgres://korp:korp@postgres:5432/auth_db?sslmode=disable
       SMTP_HOST: mailhog
       SMTP_PORT: "1025"
+      MAIL_FROM: noreply@korp.local
+      APP_BASE_URL: http://localhost:8081
+      JWT_SECRET: troque-esse-segredo-em-producao
     ports:
       - "8081:8081"
     depends_on:
