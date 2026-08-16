@@ -13,6 +13,9 @@ GET {{faturamento}}/health
 ### auth health
 GET {{auth}}/health
 
+### faturamento -> dependencias (usado pelo frontend pra desabilitar Imprimir proativamente)
+GET {{faturamento}}/health/dependencias
+
 
 ### ==================== AUTH (rode isso primeiro — produtos/notas exigem token) ====================
 

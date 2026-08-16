@@ -128,6 +128,19 @@ func (c *EstoqueClient) BuscarProduto(ctx context.Context, produtoID int64, auth
 	return ErrEstoqueIndisponivel
 }
 
+func (c *EstoqueClient) Ping(ctx context.Context) bool {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/health", nil)
+	if err != nil {
+		return false
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
+}
+
 func classificarErroNegocio(corpo []byte) error {
 	var erro httpx.ErroResposta
 	_ = json.Unmarshal(corpo, &erro)

@@ -14,7 +14,12 @@
           <mat-icon>delete</mat-icon>
           Excluir nota
         </button>
-        <button mat-flat-button color="primary" (click)="imprimir()" [disabled]="imprimindo()">
+        <button
+          mat-flat-button
+          color="primary"
+          (click)="imprimir()"
+          [disabled]="imprimindo() || !estoqueDisponivel()"
+        >
           @if (imprimindo()) {
             <mat-spinner diameter="18"></mat-spinner>
             Imprimindo…
@@ -28,6 +33,13 @@
       }
     </div>
   </div>
+
+  @if (nota.status === 'ABERTA' && !estoqueDisponivel()) {
+    <div class="aviso-indisponivel">
+      <mat-icon>warning</mat-icon>
+      Serviço de estoque indisponível no momento. Impressão temporariamente desabilitada.
+    </div>
+  }
 
   <div class="superficie">
     <div class="itens-cabecalho">

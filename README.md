@@ -89,20 +89,30 @@ cd frontend
 npm test
 ```
 
-44 testes unitários (Vitest) — services, interceptors, `AuthService`, componentes principais.
+45 testes unitários (Vitest) — services, interceptors, `AuthService`, componentes principais.
+**Precisa de Node 22+** (exigência do builder novo do Angular, não do projeto em si). Sem
+instalar Node 22 localmente, roda isolado num container:
+
+```bash
+docker run --rm -v "$(pwd)":/app -w /app node:22-alpine sh -c "npm ci && npx ng test --watch=false"
+```
 
 ## Testes end-to-end (frontend + backend juntos)
 
 ```bash
 docker compose up -d   # precisa da stack real de pé
 cd frontend
+npm ci
 npm run e2e
 ```
+
+Só precisa de Node **20+** (o script roda o Playwright direto, não passa pelo Angular CLI) —
+não precisa da versão 22 exigida pelo teste unitário acima.
 
 Playwright rodando contra a aplicação real (não mock nenhum) — cobre produtos, notas, itens,
 impressão (sucesso e o cenário obrigatório de falha/recuperação, derrubando e subindo o
 container `estoque` de verdade a partir do próprio teste), auth e isolamento entre usuários.
-14 specs.
+14 specs (13 passam, 1 pula se a IA — Gemini — estiver indisponível no momento, não é bug).
 
 ## Principais endpoints
 
@@ -120,6 +130,10 @@ container `estoque` de verdade a partir do próprio teste), auth e isolamento en
 - `POST /notas/:id/imprimir` — header `Idempotency-Key` obrigatório. Sucesso devolve `200` com
   corpo vazio (não a nota); pra ver o status `FECHADA` e o resultado, faz `GET /notas/:id` em
   seguida.
+- `GET /health/dependencias` — sem auth, sempre `200`. Corpo `{"dependencias": {"estoque":
+  true|false}}`, usado pelo frontend pra desabilitar o botão Imprimir e avisar o usuário
+  proativamente quando o `estoque` está fora do ar (polling a cada 5s enquanto uma nota está
+  aberta na tela).
 
 **Auth** (`:8081`)
 - `POST /auth/cadastro`, `GET /auth/verificar?token=...`, `POST /auth/login`

@@ -1,9 +1,11 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
 
 import { Nota } from '../../../core/models/nota';
 import { NotificacaoService } from '../../../shared/notificacao/notificacao-service';
+import { StatusSistemaService } from '../../../shared/status-sistema/status-sistema-service';
 import { NotaService } from '../nota-service';
 import { NotaDetalhe } from './nota-detalhe';
 
@@ -26,6 +28,11 @@ describe('NotaDetalhe', () => {
     excluir: ReturnType<typeof vi.fn>;
   };
   let notificacaoMock: { sucesso: ReturnType<typeof vi.fn>; erro: ReturnType<typeof vi.fn> };
+  let statusSistemaMock: {
+    iniciar: ReturnType<typeof vi.fn>;
+    parar: ReturnType<typeof vi.fn>;
+    estoqueDisponivel: ReturnType<typeof signal<boolean>>;
+  };
   let router: { navigate: ReturnType<typeof vi.fn> };
 
   function montar() {
@@ -34,6 +41,7 @@ describe('NotaDetalhe', () => {
       providers: [
         { provide: NotaService, useValue: notaServiceMock },
         { provide: NotificacaoService, useValue: notificacaoMock },
+        { provide: StatusSistemaService, useValue: statusSistemaMock },
         { provide: Router, useValue: router },
         {
           provide: ActivatedRoute,
@@ -53,6 +61,7 @@ describe('NotaDetalhe', () => {
       excluir: vi.fn().mockReturnValue(of(undefined)),
     };
     notificacaoMock = { sucesso: vi.fn(), erro: vi.fn() };
+    statusSistemaMock = { iniciar: vi.fn(), parar: vi.fn(), estoqueDisponivel: signal(true) };
     router = { navigate: vi.fn() };
   });
 
@@ -120,5 +129,15 @@ describe('NotaDetalhe', () => {
     fixture.componentInstance['excluirNota']();
 
     expect(notaServiceMock.excluir).not.toHaveBeenCalled();
+  });
+
+  it('liga o monitoramento de status do estoque ao montar e desliga ao destruir', () => {
+    const fixture = montar();
+
+    expect(statusSistemaMock.iniciar).toHaveBeenCalled();
+
+    fixture.destroy();
+
+    expect(statusSistemaMock.parar).toHaveBeenCalled();
   });
 });

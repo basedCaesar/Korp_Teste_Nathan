@@ -79,6 +79,9 @@ func main() {
 	r.Use(httpx.RequestIDMiddleware())
 	r.Use(httpx.CORS())
 	httpx.RegisterHealth(r, "faturamento")
+	httpx.RegisterHealthDependencias(r, "faturamento", map[string]func(context.Context) bool{
+		"estoque": estoqueClient.Ping,
+	})
 	faturamento.RegisterRoutes(r, svc, idemStore, jwtSecret)
 
 	slog.Info("iniciando servico", "port", port)

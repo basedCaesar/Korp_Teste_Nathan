@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,6 +9,7 @@ import { finalize } from 'rxjs';
 
 import { ItemNota, Nota } from '../../../core/models/nota';
 import { NotificacaoService } from '../../../shared/notificacao/notificacao-service';
+import { StatusSistemaService } from '../../../shared/status-sistema/status-sistema-service';
 import { ItemFormDialog, ItemFormDialogData } from '../item-form-dialog/item-form-dialog';
 import { NotaService } from '../nota-service';
 
@@ -18,17 +19,19 @@ import { NotaService } from '../nota-service';
   templateUrl: './nota-detalhe.html',
   styleUrl: './nota-detalhe.scss',
 })
-export class NotaDetalhe implements OnInit {
+export class NotaDetalhe implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly notaService = inject(NotaService);
   private readonly notificacao = inject(NotificacaoService);
   private readonly dialog = inject(MatDialog);
+  private readonly statusSistema = inject(StatusSistemaService);
 
   protected readonly colunasItens = ['produto', 'quantidade', 'acoes'];
   protected readonly nota = signal<Nota | null>(null);
   protected readonly carregando = signal(false);
   protected readonly imprimindo = signal(false);
+  protected readonly estoqueDisponivel = this.statusSistema.estoqueDisponivel;
 
   private get notaId(): number {
     return Number(this.route.snapshot.paramMap.get('id'));
@@ -36,6 +39,11 @@ export class NotaDetalhe implements OnInit {
 
   ngOnInit(): void {
     this.carregar();
+    this.statusSistema.iniciar();
+  }
+
+  ngOnDestroy(): void {
+    this.statusSistema.parar();
   }
 
   protected carregar(): void {
