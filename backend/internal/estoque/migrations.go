@@ -24,6 +24,18 @@ const migrationAddProdutosCategoria = `
 ALTER TABLE produtos ADD COLUMN IF NOT EXISTS categoria TEXT;
 `
 
+const migrationCodigoUnicoPorUsuario = `
+ALTER TABLE produtos DROP CONSTRAINT IF EXISTS produtos_codigo_key;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'produtos_codigo_user_id_key'
+    ) THEN
+        ALTER TABLE produtos ADD CONSTRAINT produtos_codigo_user_id_key UNIQUE (codigo, user_id);
+    END IF;
+END $$;
+`
+
 // Migrations lista, em ordem, os statements idempotentes do dominio estoque.
 // Rodam no boot do servico (ver cmd/estoque/main.go), sem ferramenta externa.
 var Migrations = []string{
@@ -31,4 +43,5 @@ var Migrations = []string{
 	migrationAddProdutosUserID,
 	migrationIndexProdutosUserID,
 	migrationAddProdutosCategoria,
+	migrationCodigoUnicoPorUsuario,
 }
