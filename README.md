@@ -16,6 +16,32 @@ fake (MailHog) pra capturar e-mails sem depender de conta real, mais o frontend:
 | `auth` | 8081 | `auth_db` | cadastro, verificação por e-mail, login, JWT |
 | `frontend` | 4200 | — | Angular, servido via nginx |
 
+```mermaid
+graph TB
+    FE["Frontend Angular<br/>:4200"]
+
+    subgraph Backend
+        AUTH["auth<br/>:8081"]
+        EST["estoque<br/>:8082"]
+        FAT["faturamento<br/>:8083"]
+    end
+
+    DBA[("auth_db")]
+    DBE[("estoque_db")]
+    DBF[("faturamento_db")]
+    MAIL["MailHog<br/>(SMTP fake)"]
+
+    FE -->|"JWT Bearer"| AUTH
+    FE -->|"JWT Bearer"| EST
+    FE -->|"JWT Bearer"| FAT
+    AUTH --> DBA
+    EST --> DBE
+    FAT --> DBF
+    FAT -->|"HTTP retry + circuit breaker"| EST
+    AUTH -.->|"e-mail verificação"| MAIL
+    FAT -.->|"outbox e-mail"| MAIL
+```
+
 `faturamento` chama `estoque` via HTTP (com timeout, retry e circuit breaker) na hora de imprimir
 uma nota — nunca acessa o banco do estoque diretamente. `estoque` e `faturamento` validam o JWT
 emitido pelo `auth` (mesmo `JWT_SECRET` nos três) pra saber de quem é cada produto/nota — nenhum
@@ -187,4 +213,34 @@ Impressão de nota fiscal chama o serviço de estoque com timeout de 3s, retry c
 falha de rede/5xx, e circuit breaker (abre depois de 3 falhas seguidas). Uma goroutine ("reaper") roda a cada 30s e devolve pra `ABERTA` qualquer
 nota travada em `PROCESSANDO` há mais de 2 minutos — protege contra o faturamento cair no meio
 de uma impressão.
+
+```mermaid
+sequenceDiagram
+    actor U as Usuário
+    participant F as Frontend
+    participant FAT as faturamento
+    participant EST as estoque
+
+    U->>F: clica Imprimir
+    F->>FAT: POST /notas/:id/imprimir (Idempotency-Key)
+    FAT->>FAT: status = PROCESSANDO
+    FAT->>EST: POST /estoque/baixas (retry + circuit breaker)
+
+    alt estoque disponível
+        EST->>EST: UPDATE saldo (lock otimista)
+        EST-->>FAT: 200 OK
+        FAT->>FAT: status = FECHADA + outbox de e-mail
+        FAT-->>F: 200
+        F-->>U: nota fechada, saldo atualizado
+    else estoque indisponível (timeout/5xx, 3x)
+        EST--xFAT: falha
+        FAT->>FAT: status volta pra ABERTA
+        FAT-->>F: 503 ESTOQUE_INDISPONIVEL
+        F-->>U: aviso de erro (nota continua aberta)
+    end
+```
+
+O frontend também monitora `/health/dependencias` a cada 5s enquanto uma nota está aberta na
+tela — se o `estoque` cair, o botão Imprimir desabilita e um aviso aparece **antes** do clique,
+sem esperar o usuário tentar e tomar o erro acima.
 
