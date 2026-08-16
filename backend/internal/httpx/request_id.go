@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// HeaderRequestID e o header propagado entre servicos e usado em todo log.
+// HeaderRequestID e o header propagado entre servicos e devolvido como trace_id no envelope de erro.
 const HeaderRequestID = "X-Request-Id"
 
 const ctxKeyRequestID = "request_id"
