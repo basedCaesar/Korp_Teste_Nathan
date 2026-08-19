@@ -58,14 +58,24 @@ Content-Type: application/json
 ### verificar email — pegue o token no MailHog (http://localhost:8025), cole abaixo
 GET {{auth}}/auth/verificar?token=COLE_O_TOKEN_AQUI
 
-### login apos verificar — as requests de produtos/notas abaixo reusam o token desta resposta
-# @name login
+### login apos verificar (fluxo de cadastro do teste@teste.com acima, so demonstrativo)
 POST {{auth}}/auth/login
 Content-Type: application/json
 
 {
   "email": "teste@teste.com",
   "senha": "senha123"
+}
+
+### login com usuario seed (ja existe verificado depois de rodar ./scripts/seed.sh — as
+### requests de produtos/notas abaixo reusam o token desta resposta)
+# @name login
+POST {{auth}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "seed@korp.local",
+  "senha": "seed12345"
 }
 
 ### login com senha errada (espera 401)
@@ -106,7 +116,7 @@ Authorization: Bearer {{login.response.body.$.token}}
 Content-Type: application/json
 
 {
-  "codigo": "P002",
+  "codigo": "P003",
   "descricao": "Sem categoria",
   "saldo": 10
 }
